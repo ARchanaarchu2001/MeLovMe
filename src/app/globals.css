@@ -45,6 +45,8 @@ body {
   font-weight: 500;
 }
 
+/* In a layer so Tailwind utilities (e.g. `hidden md:inline-flex`) can override these */
+@layer components {
 .btn {
   display: inline-flex;
   align-items: center;
@@ -82,6 +84,7 @@ body {
 .btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 24px -12px rgb(46 26 17 / 0.5);
+}
 }
 
 /* ---------- Animations ---------- */

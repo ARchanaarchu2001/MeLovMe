@@ -2,6 +2,8 @@
 
 /* Brand palette — from the MELOVME brand guidelines */
 :root {
+  /* The brand palette is light-only: stop phone browsers (e.g. Chrome/Samsung "dark mode for sites") from recolouring it */
+  color-scheme: only light;
   --chocolate: #462b1b; /* Deep Chocolate Brown — primary */
   --espresso: #2e1a11; /* Darkest brown — combination colour */
   --ivory: #eee1ca; /* Soft Ivory — primary */

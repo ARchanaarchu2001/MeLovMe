@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Poppins, Quicksand } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -25,6 +25,11 @@ export const metadata: Metadata = {
     template: `%s | ${site.name}`,
   },
   description: site.description,
+};
+
+// Keep the brand colours as designed, even when the phone is in dark mode
+export const viewport: Viewport = {
+  colorScheme: "only light",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

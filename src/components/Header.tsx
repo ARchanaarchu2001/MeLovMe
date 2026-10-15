@@ -87,7 +87,9 @@ export default function Header() {
 
             {/* Hamburger — morphs into an X */}
             <button
-              className="relative flex h-11 w-11 items-center justify-center rounded-full bg-chocolate text-ivory md:hidden"
+              className={`relative flex h-11 w-11 items-center justify-center rounded-full border transition-colors hover:border-gold hover:text-gold md:hidden ${
+                open ? "border-gold text-gold" : "border-chocolate/20 text-chocolate"
+              }`}
               onClick={() => setOpen(!open)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}

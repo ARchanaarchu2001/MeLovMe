@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { TrashIcon } from "./Icons";
 import { formatPrice } from "@/lib/format";
 import { moveToCart, removeFromWishlist, useWishlist } from "@/lib/wishlist";
 
@@ -40,16 +41,18 @@ export default function WishlistView() {
               </div>
               <p className="font-medium text-gold">{formatPrice(product.price)}</p>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4">
               <button type="button" onClick={() => moveToCart(product.slug)} className="btn btn-primary !px-6 !py-3">
                 Move to Cart
               </button>
               <button
                 type="button"
                 onClick={() => removeFromWishlist(product.slug)}
-                className="text-xs uppercase tracking-[0.2em] text-chocolate/60 hover:text-gold"
+                aria-label={`Remove ${product.name} from wishlist`}
+                title="Remove"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-chocolate/60 transition-colors hover:bg-red-700/10 hover:text-red-700"
               >
-                Remove
+                <TrashIcon className="h-5 w-5" />
               </button>
             </div>
           </div>

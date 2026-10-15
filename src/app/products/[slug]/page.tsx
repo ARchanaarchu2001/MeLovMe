@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ProductGallery from "@/components/ProductGallery";
+import AddToCart from "@/components/AddToCart";
 import ProductCard from "@/components/ProductCard";
 import Reveal from "@/components/Reveal";
+import WishlistButton from "@/components/WishlistButton";
 import { Icon } from "@/components/Icons";
 import { getProduct, products } from "@/data/products";
-import { site } from "@/data/site";
+import { formatPrice } from "@/lib/format";
 
 export const dynamicParams = false;
 
@@ -26,7 +28,6 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
   if (!product) notFound();
 
   const others = products.filter((p) => p.slug !== product.slug);
-  const enquiry = `mailto:${site.email}?subject=${encodeURIComponent(`Enquiry: ${product.name}`)}`;
 
   return (
     <>
@@ -38,15 +39,16 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
         </nav>
 
         <div className="grid gap-12 md:grid-cols-2 md:gap-16">
-          <div className="animate-zoom-in">
+          <div className="relative animate-zoom-in">
             <ProductGallery images={product.images} name={product.name} />
+            <WishlistButton slug={product.slug} className="absolute right-5 top-5 z-10" />
           </div>
 
           <div className="animate-fade-up md:py-6" style={{ animationDelay: "200ms" }}>
             <p className="eyebrow">{product.category}</p>
             <h1 className="mt-4 text-4xl font-light md:text-5xl">{product.name}</h1>
             <div className="mt-4 flex items-center gap-4">
-              <span className="text-2xl font-medium text-gold">{product.price}</span>
+              <span className="text-2xl font-medium text-gold">{formatPrice(product.price)}</span>
               <span className="h-4 w-px bg-chocolate/20" />
               <span className="text-sm text-chocolate/60">{product.size}</span>
             </div>
@@ -61,12 +63,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               ))}
             </ul>
 
-            <div className="mt-10 flex flex-wrap gap-4">
-              <a href={enquiry} className="btn btn-primary">Enquire Now</a>
-              <a href={site.social.whatsapp} target="_blank" rel="noreferrer" className="btn btn-outline">
-                WhatsApp Us
-              </a>
-            </div>
+            <AddToCart slug={product.slug} />
 
             <div className="mt-12 divide-y divide-chocolate/10 border-y border-chocolate/10">
               <details className="group py-5" open>

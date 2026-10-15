@@ -6,7 +6,7 @@ export type Product = {
   name: string;
   category: string;
   size: string;
-  price: string;
+  price: number; // in rupees
   shortDescription: string;
   description: string;
   images: string[];
@@ -21,7 +21,7 @@ export const products: Product[] = [
     name: "Signature Body Lotion",
     category: "Body Care",
     size: "50 ml",
-    price: "₹899",
+    price: 899,
     shortDescription:
       "A silky, fast-absorbing lotion that deeply hydrates and leaves a soft signature scent.",
     description:
@@ -42,7 +42,7 @@ export const products: Product[] = [
     name: "Signature Gift Set",
     category: "Gift Collection",
     size: "Gift Box + Velvet Pouch",
-    price: "₹1,499",
+    price: 1499,
     shortDescription:
       "More than just a scent — our signature essentials in a luxurious keepsake box and velvet pouch.",
     description:

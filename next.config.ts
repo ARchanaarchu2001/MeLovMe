@@ -1,11 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Fully static site: `npm run build` writes plain HTML/CSS/JS to /out
-  output: "export",
+  // Runs as a Node.js server (`npm run build && npm start`): login, checkout
+  // and orders need the server and MongoDB
   trailingSlash: true,
   images: {
-    // Static export has no image server; images in /public are pre-optimised WebP
+    // Images in /public are pre-optimised WebP
     unoptimized: true,
   },
   turbopack: {

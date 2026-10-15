@@ -4,11 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
-import { LeafArt, SocialIcon } from "./Icons";
+import { CartIcon, Icon, LeafArt, SocialIcon, UserIcon } from "./Icons";
 import { navLinks, site } from "@/data/site";
+import { useCart } from "@/lib/cart";
+import { useWishlist } from "@/lib/wishlist";
 
 export default function Header() {
   const pathname = usePathname();
+  const { count } = useCart();
+  const { count: wishCount } = useWishlist();
   const [open, setOpen] = useState(false);
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href.replace(/\/$/, "")));
@@ -52,22 +56,48 @@ export default function Header() {
             ))}
           </nav>
 
-          <Link href="/products/" className="btn btn-primary hidden !px-6 !py-3 md:inline-flex">
-            Shop Now
-          </Link>
+          <div className="flex items-center gap-2 md:gap-5">
+            {[
+              { href: "/wishlist/", label: "Wishlist", count: wishCount, icon: <Icon name="heart" className="h-5 w-5" /> },
+              { href: "/cart/", label: "Cart", count, icon: <CartIcon /> },
+              // Logged-out visitors are sent on to the login page
+              { href: "/profile/", label: "My account", count: 0, icon: <UserIcon />, desktopOnly: true },
+            ].map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setOpen(false)}
+                aria-label={l.count > 0 ? `${l.label}, ${l.count} item${l.count === 1 ? "" : "s"}` : l.label}
+                className={`relative h-11 w-11 items-center justify-center rounded-full border border-chocolate/20 text-chocolate transition-colors hover:border-gold hover:text-gold ${
+                  l.desktopOnly ? "hidden md:flex" : "flex"
+                }`}
+              >
+                {l.icon}
+                {l.count > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[0.65rem] font-semibold text-espresso">
+                    {l.count}
+                  </span>
+                )}
+              </Link>
+            ))}
 
-          {/* Hamburger — morphs into an X */}
-          <button
-            className="relative flex h-11 w-11 items-center justify-center rounded-full bg-chocolate text-ivory md:hidden"
-            onClick={() => setOpen(!open)}
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            aria-controls="mobile-menu"
-          >
-            <span className={`absolute h-[2px] w-5 rounded bg-current transition-all duration-300 ${open ? "rotate-45" : "-translate-y-[6px]"}`} />
-            <span className={`absolute h-[2px] w-5 rounded bg-current transition-all duration-300 ${open ? "scale-x-0 opacity-0" : ""}`} />
-            <span className={`absolute h-[2px] w-5 rounded bg-current transition-all duration-300 ${open ? "-rotate-45" : "translate-y-[6px]"}`} />
-          </button>
+            <Link href="/products/" className="btn btn-primary hidden !px-6 !py-3 md:inline-flex">
+              Shop Now
+            </Link>
+
+            {/* Hamburger — morphs into an X */}
+            <button
+              className="relative flex h-11 w-11 items-center justify-center rounded-full bg-chocolate text-ivory md:hidden"
+              onClick={() => setOpen(!open)}
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              aria-controls="mobile-menu"
+            >
+              <span className={`absolute h-[2px] w-5 rounded bg-current transition-all duration-300 ${open ? "rotate-45" : "-translate-y-[6px]"}`} />
+              <span className={`absolute h-[2px] w-5 rounded bg-current transition-all duration-300 ${open ? "scale-x-0 opacity-0" : ""}`} />
+              <span className={`absolute h-[2px] w-5 rounded bg-current transition-all duration-300 ${open ? "-rotate-45" : "translate-y-[6px]"}`} />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -109,6 +139,13 @@ export default function Header() {
           >
             <Link href="/products/" onClick={() => setOpen(false)} className="btn btn-gold w-full">
               Shop Now
+            </Link>
+            <Link
+              href="/profile/"
+              onClick={() => setOpen(false)}
+              className="mt-4 flex items-center justify-center gap-2 text-xs uppercase tracking-[0.25em] text-ivory/80 hover:text-gold"
+            >
+              <UserIcon className="h-4 w-4" /> My Account
             </Link>
 
             <div className="mt-10 space-y-2 text-sm text-ivory/70">

@@ -11,8 +11,21 @@ export const site = {
   social: {
     instagram: "https://instagram.com/",
     facebook: "https://facebook.com/",
-    whatsapp: "https://wa.me/919876543210",
   },
+  // UPI account that receives payments. Replace with the real business UPI ID
+  // before going live — customers pay directly to this ID.
+  upi: {
+    id: "melovme@upi",
+    payeeName: "MELOVME",
+  },
+  shipping: {
+    fee: 0, // flat delivery charge in rupees
+    freeAbove: 0, // orders at or above this subtotal ship free
+  },
+  // Optional: URL that is also sent each paid order as a JSON POST (e.g. Formspree,
+  // Web3Forms or a Google Apps Script web app), so the shop gets notified.
+  // Orders are always saved in MongoDB (`orders` collection) either way.
+  orderEndpoint: "",
 };
 
 export const navLinks = [

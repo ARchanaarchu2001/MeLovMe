@@ -68,14 +68,14 @@ async function checkDevOtp(phone: string, code: string) {
 // Logs the customer in once their phone number is proven, by a Firebase ID token
 // (`idToken`) or, in development without Firebase, by our own OTP (`phone` + `code`).
 // A first-time customer gets `needsName` back and calls again with their name.
-// On success it starts a session and sends them back to the page that asked them to log in.
+// On success it starts a session and returns the page to go back to (the one that asked them to log in).
 export async function login(input: {
   idToken?: string;
   phone?: string;
   code?: string;
   name?: string;
   next?: string;
-}): Promise<{ error: string } | { needsName: true }> {
+}): Promise<{ error: string } | { needsName: true } | { redirectTo: string }> {
   let phone: string;
   if (devOtpAllowed()) {
     const error = await checkDevOtp(String(input.phone ?? ""), String(input.code ?? ""));
@@ -99,7 +99,7 @@ export async function login(input: {
 
   await otps.deleteOne({ phone });
   await createSession(user._id);
-  redirect(safeNext(input.next));
+  return { redirectTo: safeNext(input.next) };
 }
 
 export async function logout() {

@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import type { ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
 import { devSendOtp, login } from "@/app/actions/auth";
 import { firebaseEnabled } from "@/lib/firebase-config";
 import { field } from "./AddressForm";
+import OtpInput from "./OtpInput";
 
 // Friendly messages for the Firebase errors customers can actually hit
 const firebaseErrors: Record<string, string> = {
@@ -27,6 +29,7 @@ function errorMessage(err: unknown) {
 // Mobile number -> SMS OTP -> (first time only) name.
 // Firebase sends and checks the OTP, then the server checks Firebase's proof and logs the customer in.
 export default function LoginForm({ next }: { next: string }) {
+  const router = useRouter();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -69,8 +72,8 @@ export default function LoginForm({ next }: { next: string }) {
 
   function finish(withName?: string) {
     return login({ idToken: idToken.current, phone, code, name: withName, next }).then((res) => {
-      // On success the server redirects, so a returned value is either an error or a name request
-      if ("needsName" in res) setStep("name");
+      if ("redirectTo" in res) router.replace(res.redirectTo);
+      else if ("needsName" in res) setStep("name");
       else setError(res.error);
     });
   }
@@ -134,16 +137,13 @@ export default function LoginForm({ next }: { next: string }) {
       {step === "otp" && (
         <form onSubmit={handleVerify} className="space-y-5">
           <p className="text-sm text-chocolate/75" aria-live="polite">{notice}</p>
-          <input
+          <OtpInput
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="Enter OTP *"
-            aria-label="One-time password"
-            required
-            autoFocus
-            className={`${field} tracking-[0.4em]`}
+            onChange={(c) => {
+              setCode(c);
+              setError("");
+            }}
+            disabled={pending}
           />
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
           <button type="submit" className="btn btn-primary w-full" disabled={pending || code.length !== 6}>

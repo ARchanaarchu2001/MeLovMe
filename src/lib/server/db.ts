@@ -23,8 +23,10 @@ export type OrderDoc = {
   subtotal: number;
   shipping: number;
   total: number;
-  status: "awaiting_payment" | "payment_submitted";
-  upiRef?: string;
+  status: "awaiting_payment" | "paid";
+  razorpayOrderId: string; // the Razorpay order the customer pays against
+  paymentId?: string; // Razorpay payment ID, once paid
+  paidAt?: Date;
   createdAt: Date;
 };
 
@@ -47,6 +49,7 @@ async function connect() {
     db.collection("otps").createIndex({ phone: 1 }, { unique: true }),
     db.collection("otps").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     db.collection("orders").createIndex({ userId: 1, createdAt: -1 }),
+    db.collection("orders").createIndex({ razorpayOrderId: 1 }),
   ]);
   return db;
 }

@@ -12,12 +12,6 @@ export const site = {
     instagram: "https://instagram.com/",
     facebook: "https://facebook.com/",
   },
-  // UPI account that receives payments. Replace with the real business UPI ID
-  // before going live — customers pay directly to this ID.
-  upi: {
-    id: "melovme@upi",
-    payeeName: "MELOVME",
-  },
   shipping: {
     fee: 0, // flat delivery charge in rupees
     freeAbove: 0, // orders at or above this subtotal ship free

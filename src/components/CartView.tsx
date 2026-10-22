@@ -73,7 +73,7 @@ export default function CartView() {
         <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">Order Summary</h2>
         <OrderSummary subtotal={subtotal} shipping={shipping} total={total} />
         <Link href="/checkout/" className="btn btn-primary mt-8 w-full">Checkout</Link>
-        <p className="mt-4 text-center text-xs text-chocolate/60">Secure payment by UPI</p>
+        <p className="mt-4 text-center text-xs text-chocolate/60">Secure payment by UPI, cards &amp; netbanking</p>
       </aside>
 
       {removing && (

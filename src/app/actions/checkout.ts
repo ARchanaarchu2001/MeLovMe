@@ -1,11 +1,11 @@
 "use server";
 
 import { ObjectId } from "mongodb";
-import { after } from "next/server";
 import { getProduct } from "@/data/products";
-import { site } from "@/data/site";
 import { addressFields, MAX_QTY, shippingFor, validateAddress, type Address, type CartItem, type Order, type SavedAddress } from "@/lib/order";
 import { getDb, type OrderDoc } from "@/lib/server/db";
+import { markOrderPaid } from "@/lib/server/orders";
+import { createRazorpayOrder, isValidPaymentSignature } from "@/lib/server/razorpay";
 import { requireUser } from "@/lib/server/session";
 
 const MAX_ADDRESSES = 10;
@@ -55,7 +55,7 @@ function newOrderId() {
   return `ML-${Date.now().toString(36)}${random}`.toUpperCase();
 }
 
-// Creates the order before payment, so the UPI payment can carry its ID.
+// Creates the order and its Razorpay order before payment, so the payment is tied to it.
 // Prices come from the catalogue on the server, never from the browser.
 export async function createOrder(addressId: string, cart: CartItem[]): Promise<{ error: string } | Order> {
   const user = await requireUser("/checkout/");
@@ -73,15 +73,26 @@ export async function createOrder(addressId: string, cart: CartItem[]): Promise<
   const subtotal = items.reduce((sum, i) => sum + i.total, 0);
   const shipping = shippingFor(subtotal);
   const shipTo = Object.fromEntries(addressFields.map((f) => [f, address[f]])) as Address;
+  const id = newOrderId();
+  const total = subtotal + shipping;
+  let razorpayOrderId: string;
+  try {
+    razorpayOrderId = await createRazorpayOrder(total, id);
+  } catch (err) {
+    console.error(err);
+    return { error: "We couldn't start the payment right now. Please try again shortly." };
+  }
+
   const order: OrderDoc = {
-    _id: newOrderId(),
+    _id: id,
     userId: user._id,
     address: shipTo,
     items,
     subtotal,
     shipping,
-    total: subtotal + shipping,
+    total,
     status: "awaiting_payment",
+    razorpayOrderId,
     createdAt: new Date(),
   };
   await (await getDb()).orders.insertOne(order);
@@ -93,35 +104,26 @@ export async function createOrder(addressId: string, cart: CartItem[]): Promise<
     items: items.map(({ name, size, qty, price, total }) => ({ name, size, qty, price, total })),
     subtotal,
     shipping,
-    total: order.total,
+    total,
+    razorpayOrderId,
   };
 }
 
-// The customer has paid by UPI and entered the reference number (UTR)
-export async function submitPayment(orderId: string, upiRef: string): Promise<{ error: string } | { ok: true }> {
+// Razorpay Checkout reports a successful payment from the browser. The signature proves it
+// came from Razorpay; Razorpay's webhook (src/app/api/razorpay/webhook) confirms it again.
+export async function confirmPayment(
+  orderId: string,
+  payment: { razorpay_payment_id: string; razorpay_signature: string },
+): Promise<{ error: string } | { ok: true }> {
   const user = await requireUser("/checkout/");
-  if (!/^\d{12}$/.test(upiRef)) return { error: "Enter the 12-digit UPI reference number." };
+  const order = await (await getDb()).orders.findOne({ _id: String(orderId), userId: user._id });
+  if (!order) return { error: "We couldn't find this order." };
 
-  const { orders } = await getDb();
-  const order = await orders.findOneAndUpdate(
-    { _id: orderId, userId: user._id, status: "awaiting_payment" },
-    { $set: { status: "payment_submitted", upiRef } },
-    { returnDocument: "after" },
-  );
-  if (!order) return { error: "We couldn't find this order. Please start checkout again." };
-
-  // Optional notification to the shop (e.g. Formspree), sent after the response so the customer
-  // isn't kept waiting. `after` keeps serverless hosts (Vercel) running until it finishes.
-  // The order is already saved, so failures are only logged.
-  if (site.orderEndpoint) {
-    const endpoint = site.orderEndpoint;
-    after(() =>
-      fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ subject: `New order ${order._id} — ${order.address.name}`, order }),
-      }).catch((err) => console.error("Order notification failed", err)),
-    );
+  const paymentId = String(payment?.razorpay_payment_id ?? "");
+  // Use our own record of the Razorpay order ID, never one sent by the browser
+  if (!paymentId || !isValidPaymentSignature(order.razorpayOrderId, paymentId, payment?.razorpay_signature)) {
+    return { error: `We couldn't confirm your payment. If money was deducted, please contact us with order ID ${order._id}.` };
   }
+  await markOrderPaid(order.razorpayOrderId, paymentId);
   return { ok: true };
 }

@@ -22,20 +22,34 @@ In development, leave the `NEXT_PUBLIC_FIREBASE_*` variables empty: the login OT
    their name, which creates their account.
 4. At checkout, a first-time customer fills in a delivery address. Returning customers pick one of their saved
    addresses or add a new one. Addresses are saved to the account.
-5. The order is saved in MongoDB, then paid by UPI (QR code / "Open UPI App") straight to `site.upi.id`. There is
-   no payment gateway. The customer enters the 12-digit UPI reference (UTR) and the order is marked
-   `payment_submitted`.
+5. **Pay** saves the order in MongoDB and opens Razorpay Checkout: UPI apps (Google Pay, PhonePe, Paytm) on phones,
+   a UPI QR code on computers, plus cards and netbanking. When the payment succeeds the order is marked `paid` and
+   the customer is sent to `/orders/<id>/` ("Order confirmed").
 6. `/profile/` shows the customer's name (editable) and phone number, with a log-out button.
 
-Payments are **not verified automatically**: match each order's UTR and amount against your UPI/bank statement
-before dispatching. Orders are in the `orders` collection (view them in MongoDB Atlas → Browse Collections).
+Payments are confirmed twice: by the browser (checked with Razorpay's payment signature) and by Razorpay's webhook
+(`/api/razorpay/webhook/`), so an order is still marked paid if the customer closes the page right after paying.
+Ship only orders with status `paid`. Orders are in the `orders` collection (MongoDB Atlas → Browse Collections), and
+every payment is also listed in the Razorpay Dashboard → Transactions.
+
+## Razorpay setup
+
+1. Razorpay Dashboard → Account & Settings → **API Keys** → generate keys. Put them in `.env` (and in Vercel) as
+   `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. Test keys (`rzp_test_...`) take fake payments only.
+2. Account & Settings → **Webhooks** → Add New Webhook:
+   - URL: `https://<your-domain>/api/razorpay/webhook/` (keep the trailing slash)
+   - Secret: any long random text; put the same text in `RAZORPAY_WEBHOOK_SECRET`
+   - Events: `payment.captured` and `order.paid`
+3. Account & Settings → **Payment capture** → automatic (so payments don't need capturing by hand).
+4. When the account is activated (KYC), generate **live** keys, replace both key variables, and add the webhook again
+   in live mode (test and live webhooks are separate).
 
 ## Database (MongoDB)
 
 | Collection | Contents |
 | --- | --- |
 | `users` | phone (login ID), name, saved addresses |
-| `orders` | items, prices, delivery address, total, status, UPI reference |
+| `orders` | items, prices, delivery address, total, status (`awaiting_payment` / `paid`), Razorpay order and payment IDs |
 | `sessions` | login sessions (expire after 30 days) |
 | `otps` | development-only login codes, hashed (expire after 10 minutes) |
 
@@ -47,7 +61,8 @@ Indexes are created automatically on first connection.
 | --- | --- |
 | Products (name, price, images, description) | `src/data/products.ts` |
 | Contact details, social links, testimonials, values | `src/data/site.ts` |
-| UPI ID that receives payments, shipping fee, order notification URL | `src/data/site.ts` (`upi`, `shipping`, `orderEndpoint`) |
+| Shipping fee, order notification URL | `src/data/site.ts` (`shipping`, `orderEndpoint`) |
+| Payments | `src/lib/server/razorpay.ts`, `src/app/api/razorpay/webhook/route.ts`, `src/components/CheckoutFlow.tsx` |
 | Login / OTP logic | `src/components/LoginForm.tsx` (Firebase, in the browser), `src/app/actions/auth.ts` (server) |
 | Checkout, addresses, orders | `src/app/actions/checkout.ts`, `src/components/CheckoutFlow.tsx` |
 | Brand colours | `src/app/globals.css` (`:root`) |
@@ -61,9 +76,10 @@ A product page is generated automatically at `/products/<slug>/`.
 
 - Firebase console: enable Authentication -> Sign-in method -> Phone, upgrade to the Blaze plan (needed to send
   real SMS), and add your live domain under Authentication -> Settings -> Authorized domains.
-- Set `MONGODB_URI` and the four `NEXT_PUBLIC_FIREBASE_*` variables in the host's environment variables.
+- Set `MONGODB_URI`, the four `NEXT_PUBLIC_FIREBASE_*` variables and the three `RAZORPAY_*` variables in the host's
+  environment variables.
 - In MongoDB Atlas → Network Access, allow your host's IP addresses.
-- Replace `site.upi.id` with the real business UPI ID.
+- Razorpay: switch to live keys and add the live webhook (see Razorpay setup above).
 
 ## Brand
 

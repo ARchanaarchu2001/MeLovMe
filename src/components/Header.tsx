@@ -142,13 +142,15 @@ export default function Header() {
             <Link href="/products/" onClick={() => setOpen(false)} className="btn btn-gold w-full">
               Shop Now
             </Link>
-            <Link
-              href="/profile/"
-              onClick={() => setOpen(false)}
-              className="mt-4 flex items-center justify-center gap-2 text-xs uppercase tracking-[0.25em] text-ivory/80 hover:text-gold"
-            >
-              <UserIcon className="h-4 w-4" /> My Account
-            </Link>
+            <div className="mt-4 flex items-center justify-center gap-6 text-xs uppercase tracking-[0.25em] text-ivory/80">
+              <Link href="/profile/" onClick={() => setOpen(false)} className="flex items-center gap-2 hover:text-gold">
+                <UserIcon className="h-4 w-4" /> My Account
+              </Link>
+              <span aria-hidden="true" className="h-3 w-px bg-ivory/30" />
+              <Link href="/orders/" onClick={() => setOpen(false)} className="hover:text-gold">
+                My Orders
+              </Link>
+            </div>
 
             <div className="mt-10 space-y-2 text-sm text-ivory/70">
               <a href={`mailto:${site.email}`} className="block hover:text-gold">{site.email}</a>

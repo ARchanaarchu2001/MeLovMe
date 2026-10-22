@@ -58,6 +58,21 @@ export const products: Product[] = [
     howToUse:
       "Unbox, unwind and enjoy. Use the lotion daily after bathing; keep the velvet pouch for travel essentials.",
   },
+  // TEMPORARY: ₹1 product for testing real payments end to end. Remove before launch.
+  {
+    slug: "test-product",
+    name: "Test Product",
+    category: "Test Only",
+    size: "Sample",
+    price: 1,
+    shortDescription: "₹1 test item for checking payments. Not a real product.",
+    description:
+      "This ₹1 item exists only to test checkout and payments on the live site. It will not be shipped. Remove it from src/data/products.ts before launch.",
+    images: ["/images/body-lotion-box.webp"],
+    highlights: ["For payment testing only", "Will not be shipped"],
+    ingredients: ["—"],
+    howToUse: "Add to cart, check out and pay ₹1 to test the payment flow.",
+  },
 ];
 
 export function getProduct(slug: string) {

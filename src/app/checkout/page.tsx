@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import CheckoutFlow from "@/components/CheckoutFlow";
+import { razorpayKeyId } from "@/lib/server/razorpay";
 import { requireUser } from "@/lib/server/session";
 
 export const metadata: Metadata = {
@@ -14,9 +15,10 @@ export default async function CheckoutPage() {
 
   return (
     <section className="mx-auto max-w-7xl px-5 py-12 md:px-8 md:py-16">
-      <p className="eyebrow">Secure UPI Payment</p>
+      <p className="eyebrow">Secure Payment</p>
       <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">Checkout</h1>
-      <CheckoutFlow addresses={addresses} user={{ name: user.name, phone: user.phone }} />
+      {/* The key ID is public by design (it identifies the account); the secret stays on the server */}
+      <CheckoutFlow addresses={addresses} user={{ name: user.name, phone: user.phone }} razorpayKey={razorpayKeyId()} />
     </section>
   );
 }

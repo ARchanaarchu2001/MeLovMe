@@ -28,6 +28,7 @@ export type Order = {
   subtotal: number;
   shipping: number;
   total: number;
+  razorpayOrderId: string;
 };
 
 export const addressFields = ["name", "phone", "address", "city", "state", "pincode"] as const;
@@ -41,9 +42,3 @@ export function validateAddress(a: Address) {
   return errors;
 }
 
-// UPI deep link: opens a UPI app on phones, and is what the QR code encodes.
-// Values are percent-encoded by hand because some UPI apps don't decode "+" as a space.
-export function upiLink(order: Order) {
-  const enc = encodeURIComponent;
-  return `upi://pay?pa=${site.upi.id}&pn=${enc(site.upi.payeeName)}&am=${order.total.toFixed(2)}&cu=INR&tn=${enc(`Order ${order.id}`)}`;
-}

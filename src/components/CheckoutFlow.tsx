@@ -1,28 +1,59 @@
 "use client";
 
 import Link from "next/link";
-import { QRCodeSVG } from "qrcode.react";
-import { useState, useTransition, type FormEvent } from "react";
-import AddressForm, { field } from "./AddressForm";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import AddressForm from "./AddressForm";
 import { PencilIcon, TrashIcon } from "./Icons";
 import OrderSummary from "./OrderSummary";
-import { createOrder, deleteAddress, submitPayment } from "@/app/actions/checkout";
+import { confirmPayment, createOrder, deleteAddress } from "@/app/actions/checkout";
 import { site } from "@/data/site";
 import { clearCart, setQty, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
-import { upiLink, type Address, type Order, type SavedAddress } from "@/lib/order";
+import type { Address, Order, SavedAddress } from "@/lib/order";
 
-// Checkout for a logged-in customer: delivery address -> pay by UPI -> confirmation.
-// Payment goes straight to the shop's UPI ID (no gateway); the customer then
-// enters the UPI reference number so the shop can match the payment to the order.
+// The parts of Razorpay Checkout (https://checkout.razorpay.com/v1/checkout.js) we use
+type RazorpaySuccess = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
+type RazorpayCheckout = {
+  open: () => void;
+  on: (event: "payment.failed", handler: (res: { error?: { description?: string } }) => void) => void;
+};
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayCheckout;
+  }
+}
+
+// Loads Razorpay's checkout script once, the first time someone pays
+let razorpayScript: Promise<boolean> | null = null;
+function loadRazorpay() {
+  razorpayScript ??= new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => {
+      razorpayScript = null; // let the next attempt retry
+      resolve(false);
+    };
+    document.body.appendChild(script);
+  });
+  return razorpayScript;
+}
+
+// Checkout for a logged-in customer: delivery address -> pay with Razorpay -> order page.
+// Razorpay shows UPI apps (Google Pay, PhonePe, ...) on phones, a UPI QR code on computers,
+// plus cards and netbanking, and tells us when the payment succeeds.
 export default function CheckoutFlow({
   addresses: initialAddresses,
   user,
+  razorpayKey,
 }: {
   addresses: SavedAddress[];
   user: { name: string; phone: string };
+  razorpayKey: string;
 }) {
+  const router = useRouter();
   const cart = useCart();
   const [addresses, setAddresses] = useState(initialAddresses);
   const [selectedId, setSelectedId] = useState(initialAddresses.at(-1)?.id ?? "");
@@ -30,11 +61,12 @@ export default function CheckoutFlow({
   const [adding, setAdding] = useState(initialAddresses.length === 0);
   const [editing, setEditing] = useState<SavedAddress | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  // True while Razorpay's payment window is open
+  const [paying, setPaying] = useState(false);
   const [placed, setPlaced] = useState(false);
-  const [upiRef, setUpiRef] = useState("");
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
+  const busy = pending || paying;
 
   function handleAddressSaved(address: SavedAddress) {
     setAddresses(
@@ -60,54 +92,63 @@ export default function CheckoutFlow({
     });
   }
 
-  function handleContinue() {
+  // Creates the order on first click (prices are worked out on the server), then opens Razorpay.
+  // If the customer closes the payment window, clicking Pay again reuses the same order.
+  function handlePay() {
     setError("");
     startTransition(async () => {
-      const res = await createOrder(
-        selectedId,
-        cart.lines.map((l) => ({ slug: l.product.slug, qty: l.qty })),
-      );
-      if ("error" in res) return setError(res.error);
-      setOrder(res);
-      window.scrollTo(0, 0);
+      let current = order;
+      if (!current) {
+        const res = await createOrder(
+          selectedId,
+          cart.lines.map((l) => ({ slug: l.product.slug, qty: l.qty })),
+        );
+        if ("error" in res) return setError(res.error);
+        current = res;
+        setOrder(res);
+      }
+      if (!(await loadRazorpay()) || !window.Razorpay) {
+        return setError("We couldn't load the payment page. Please check your connection and try again.");
+      }
+      openPayment(current);
     });
   }
 
-  function handleConfirm(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!order) return;
-    setError("");
-    startTransition(async () => {
-      const res = await submitPayment(order.id, upiRef);
-      if ("error" in res) return setError(res.error);
-      setPlaced(true);
-      clearCart();
-      window.scrollTo(0, 0);
+  function openPayment(o: Order) {
+    const checkout = new window.Razorpay!({
+      key: razorpayKey,
+      order_id: o.razorpayOrderId,
+      amount: o.total * 100, // paise
+      currency: "INR",
+      name: site.name,
+      description: `Order ${o.id}`,
+      prefill: { name: user.name, contact: `+91${user.phone}` },
+      notes: { order: o.id },
+      theme: { color: "#462b1b" },
+      handler: (payment: RazorpaySuccess) => {
+        startTransition(async () => {
+          const res = await confirmPayment(o.id, payment);
+          setPaying(false);
+          if ("error" in res) return setError(res.error);
+          setPlaced(true);
+          clearCart();
+          router.push(`/orders/${o.id}/`);
+        });
+      },
+      modal: { ondismiss: () => setPaying(false) },
     });
+    // Razorpay lets the customer retry inside its window; we just show why the last try failed
+    checkout.on("payment.failed", (res) => setError(res.error?.description ?? "The payment didn't go through."));
+    setPaying(true);
+    checkout.open();
   }
 
-  async function copyUpiId() {
-    try {
-      await navigator.clipboard.writeText(site.upi.id);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard blocked — the ID is visible on screen to copy by hand
-    }
-  }
-
-  if (order && placed) {
+  // Paid: the cart is now empty, so show this (not "cart empty") while the order page opens
+  if (placed) {
     return (
-      <div className="mx-auto max-w-xl py-10 text-center">
-        <p className="eyebrow">Thank you</p>
-        <h2 className="mt-4 text-3xl font-light">Order received</h2>
-        <p className="mt-6 text-sm uppercase tracking-[0.2em] text-chocolate/60">Order ID</p>
-        <p className="mt-1 text-2xl font-medium text-gold">{order.id}</p>
-        <p className="mt-6 leading-relaxed text-chocolate/75">
-          Once we verify your UPI payment of {formatPrice(order.total)}, we&apos;ll confirm your order on{" "}
-          {order.address.phone}.
-        </p>
-        <Link href="/products/" className="btn btn-primary mt-10">Continue Shopping</Link>
+      <div className="py-16 text-center">
+        <p className="eyebrow">Payment received</p>
+        <p className="mt-4 text-chocolate/70">Opening your order…</p>
       </div>
     );
   }
@@ -205,81 +246,42 @@ export default function CheckoutFlow({
               </button>
               {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
               <div className="mt-8">
-                <button type="button" onClick={handleContinue} className="btn btn-primary" disabled={pending || !selectedId}>
-                  {pending ? "Please wait…" : "Continue to Payment"}
+                <button type="button" onClick={handlePay} className="btn btn-primary" disabled={busy || !selectedId}>
+                  {busy ? "Please wait…" : `Pay ${formatPrice(cart.total)}`}
                 </button>
+                <p className="mt-3 text-xs text-chocolate/60">UPI (Google Pay, PhonePe, Paytm), cards and netbanking</p>
               </div>
             </>
           )}
         </div>
       ) : (
         <div>
-          <h2 className="text-sm uppercase tracking-[0.2em]">2. Pay by UPI</h2>
+          <h2 className="text-sm uppercase tracking-[0.2em]">2. Payment</h2>
           <p className="mt-4 text-sm leading-relaxed text-chocolate/75">
-            Pay <strong className="text-chocolate">{formatPrice(order.total)}</strong> for order{" "}
-            <strong className="text-chocolate">{order.id}</strong> using any UPI app — Google Pay, PhonePe, Paytm, BHIM
-            and others.
+            Complete your payment of <strong className="text-chocolate">{formatPrice(order.total)}</strong> for order{" "}
+            <strong className="text-chocolate">{order.id}</strong>. Pay with any UPI app — Google Pay, PhonePe, Paytm —
+            or a card or netbanking.
           </p>
-
-          <div className="mt-8 flex flex-col items-center gap-8 rounded-[2rem] bg-ivory p-8 sm:flex-row sm:items-start">
-            <div className="rounded-2xl bg-white p-4">
-              <QRCodeSVG value={upiLink(order)} size={176} fgColor="#2e1a11" title="UPI payment QR code" />
-            </div>
-            <div className="w-full text-center text-sm sm:text-left">
-              <p className="font-medium">Scan the QR code with your UPI app</p>
-              <p className="mt-1 text-chocolate/70">The amount is filled in automatically.</p>
-
-              <a href={upiLink(order)} className="btn btn-primary mt-6 w-full sm:hidden">Open UPI App</a>
-
-              <p className="mt-6 text-xs uppercase tracking-[0.2em] text-chocolate/60">Or pay to UPI ID</p>
-              <div className="mt-2 flex items-center justify-center gap-3 sm:justify-start">
-                <span className="font-medium">{site.upi.id}</span>
-                <button type="button" onClick={copyUpiId} className="border-b border-gold text-xs uppercase tracking-[0.2em] text-gold">
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-              <p className="mt-1 text-chocolate/70">Payee: {site.upi.payeeName}</p>
-            </div>
-          </div>
-
-          <p className="mt-8 text-sm text-chocolate/75">
+          <p className="mt-6 text-sm text-chocolate/75">
             Delivering to: <AddressText address={order.address} inline />
           </p>
-
-          <form onSubmit={handleConfirm} className="mt-10">
-            <h2 className="text-sm uppercase tracking-[0.2em]">3. Confirm Your Payment</h2>
-            <p className="mt-4 text-sm leading-relaxed text-chocolate/75">
-              After paying, enter the 12-digit UPI reference number (UTR) shown in your UPI app&apos;s transaction
-              details.
-            </p>
-            <input
-              value={upiRef}
-              onChange={(e) => setUpiRef(e.target.value.replace(/\D/g, "").slice(0, 12))}
-              required
-              inputMode="numeric"
-              pattern="[0-9]{12}"
-              title="12-digit UPI reference number"
-              placeholder="UPI reference number (UTR) *"
-              aria-label="UPI reference number (UTR)"
-              className={`${field} mt-5 max-w-sm`}
-            />
-            {error && <p className="mt-4 text-sm text-red-700" role="alert">{error}</p>}
-            <div className="mt-6 flex flex-wrap items-center gap-6">
-              <button type="submit" className="btn btn-primary" disabled={pending}>
-                {pending ? "Placing Order…" : "Place Order"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setOrder(null);
-                  setError("");
-                }}
-                className="text-xs uppercase tracking-[0.2em] text-chocolate/60 hover:text-gold"
-              >
-                Change address
-              </button>
-            </div>
-          </form>
+          {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
+          <div className="mt-8 flex flex-wrap items-center gap-6">
+            <button type="button" onClick={handlePay} className="btn btn-primary" disabled={busy}>
+              {busy ? "Please wait…" : `Pay ${formatPrice(order.total)}`}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOrder(null);
+                setError("");
+              }}
+              disabled={busy}
+              className="text-xs uppercase tracking-[0.2em] text-chocolate/60 hover:text-gold"
+            >
+              Change address
+            </button>
+          </div>
         </div>
       )}
 

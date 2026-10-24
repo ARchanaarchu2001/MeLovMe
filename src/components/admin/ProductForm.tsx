@@ -231,16 +231,33 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
               <div key={src} className="w-28">
                 <div className={`relative aspect-square overflow-hidden rounded-xl bg-ivory ${i === 0 ? "ring-2 ring-gold" : ""}`}>
                   <Image src={src} alt="" fill sizes="112px" className="object-cover" />
-                </div>
-                <div className="mt-1 flex justify-between text-[0.65rem] uppercase tracking-[0.1em] text-chocolate/60">
-                  <button type="button" onClick={() => moveImage(i, i - 1)} disabled={i === 0} className="hover:text-gold disabled:opacity-30" aria-label="Move left">←</button>
-                  {i > 0 ? (
-                    <button type="button" onClick={() => moveImage(i, 0)} className="hover:text-gold">Main</button>
-                  ) : (
-                    <span className="text-gold">Main</span>
+                  {i === 0 && (
+                    <span className="absolute left-1.5 top-1.5 rounded-full bg-gold px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-espresso">
+                      Main
+                    </span>
                   )}
-                  <button type="button" onClick={() => removeImage(i)} className="hover:text-red-700">Remove</button>
-                  <button type="button" onClick={() => moveImage(i, i + 1)} disabled={i === v.images.length - 1} className="hover:text-gold disabled:opacity-30" aria-label="Move right">→</button>
+                  {/* Remove */}
+                  <button
+                    type="button"
+                    onClick={() => removeImage(i)}
+                    aria-label={`Remove image ${i + 1}`}
+                    title="Remove"
+                    className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-espresso/75 text-ivory shadow transition-colors hover:bg-red-700"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6 6 18" />
+                    </svg>
+                  </button>
+                </div>
+                {/* Order: move left/right, or make this the main image */}
+                <div className="mt-1.5 flex items-center justify-between text-chocolate/60">
+                  <button type="button" onClick={() => moveImage(i, i - 1)} disabled={i === 0} className="px-1 hover:text-gold disabled:opacity-25" aria-label={`Move image ${i + 1} left`} title="Move left">←</button>
+                  {i > 0 && (
+                    <button type="button" onClick={() => moveImage(i, 0)} className="text-[0.6rem] uppercase tracking-[0.1em] hover:text-gold">
+                      Set as main
+                    </button>
+                  )}
+                  <button type="button" onClick={() => moveImage(i, i + 1)} disabled={i === v.images.length - 1} className="px-1 hover:text-gold disabled:opacity-25" aria-label={`Move image ${i + 1} right`} title="Move right">→</button>
                 </div>
               </div>
             ))}

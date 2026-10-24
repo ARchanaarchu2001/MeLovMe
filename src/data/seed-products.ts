@@ -1,21 +1,9 @@
-// Static product catalogue. To add a product, append an object to this array
-// and drop its images into /public/images — a page is generated for it automatically.
+import type { Product } from "@/lib/product";
 
-export type Product = {
-  slug: string;
-  name: string;
-  category: string;
-  size: string;
-  price: number; // in rupees
-  shortDescription: string;
-  description: string;
-  images: string[];
-  highlights: string[];
-  ingredients: string[];
-  howToUse: string;
-};
-
-export const products: Product[] = [
+// The starting catalogue: copied into MongoDB the first time the `products` collection is
+// empty (see src/lib/server/db.ts). After that, products are managed in /admin/products and
+// editing this file changes nothing.
+export const seedProducts: Omit<Product, "enabled">[] = [
   {
     slug: "signature-body-lotion",
     name: "Signature Body Lotion",
@@ -58,7 +46,7 @@ export const products: Product[] = [
     howToUse:
       "Unbox, unwind and enjoy. Use the lotion daily after bathing; keep the velvet pouch for travel essentials.",
   },
-  // TEMPORARY: ₹1 product for testing real payments end to end. Remove before launch.
+  // ₹1 product for testing real payments end to end. Disable it in /admin/products before launch.
   {
     slug: "test-product",
     name: "Test Product",
@@ -67,14 +55,10 @@ export const products: Product[] = [
     price: 1,
     shortDescription: "₹1 test item for checking payments. Not a real product.",
     description:
-      "This ₹1 item exists only to test checkout and payments on the live site. It will not be shipped. Remove it from src/data/products.ts before launch.",
+      "This ₹1 item exists only to test checkout and payments on the live site. It will not be shipped.",
     images: ["/images/body-lotion-box.webp"],
     highlights: ["For payment testing only", "Will not be shipped"],
     ingredients: ["—"],
     howToUse: "Add to cart, check out and pay ₹1 to test the payment flow.",
   },
 ];
-
-export function getProduct(slug: string) {
-  return products.find((p) => p.slug === slug);
-}

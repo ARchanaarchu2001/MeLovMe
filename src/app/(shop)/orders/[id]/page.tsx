@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import OrderSummary from "@/components/OrderSummary";
 import { formatPrice } from "@/lib/format";
+import { fulfillmentLabels } from "@/lib/order";
 import { getDb } from "@/lib/server/db";
 import { requireUser } from "@/lib/server/session";
 
@@ -33,6 +34,19 @@ export default async function OrderPage({ params }: PageProps<"/orders/[id]">) {
             ? `We've received your payment of ${formatPrice(order.total)}. We'll send you updates on +91 ${a.phone}.`
             : "We haven't received confirmation of your payment yet. This usually takes a few seconds — refresh this page shortly. If money was deducted and this doesn't update, contact us with your order ID."}
         </p>
+        {paid && (
+          <div className="mt-8 inline-block rounded-2xl border border-chocolate/15 px-6 py-4 text-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-chocolate/60">Status</p>
+            <p className={`mt-1 font-medium ${order.fulfillment === "cancelled" ? "text-red-700" : ""}`}>
+              {fulfillmentLabels[order.fulfillment ?? "placed"]}
+            </p>
+            {order.trackingNumber && (
+              <p className="mt-2 text-chocolate/75">
+                {order.courier ? `${order.courier} · ` : ""}Tracking: {order.trackingNumber}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-12 grid gap-8 rounded-[2rem] bg-ivory p-8 sm:grid-cols-2">

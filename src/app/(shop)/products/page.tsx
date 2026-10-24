@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import ProductCard from "@/components/ProductCard";
 import Reveal from "@/components/Reveal";
-import { products } from "@/data/products";
+import { getCatalog } from "@/lib/server/products";
 
 export const metadata: Metadata = {
   title: "Products",
   description: "Explore the MELOVME collection of premium body-care essentials.",
 };
 
-export default function ProductsPage() {
+export default async function ProductsPage() {
+  const products = await getCatalog();
+
   return (
     <>
       <section className="bg-ivory">

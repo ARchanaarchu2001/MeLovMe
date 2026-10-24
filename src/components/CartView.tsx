@@ -7,7 +7,8 @@ import { TrashIcon } from "./Icons";
 import OrderSummary from "./OrderSummary";
 import QtyStepper from "./QtyStepper";
 import RemoveItemDialog from "./RemoveItemDialog";
-import type { Product } from "@/data/products";
+import Price from "./Price";
+import type { Product } from "@/lib/product";
 import { setQty, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
@@ -47,7 +48,7 @@ export default function CartView() {
                     {product.name}
                   </Link>
                   <p className="mt-1 text-sm text-chocolate/60">
-                    {product.size} · {formatPrice(product.price)}
+                    {product.size} · <Price product={product} showBadge={false} />
                   </p>
                 </div>
                 <p className="font-medium text-gold">{formatPrice(total)}</p>

@@ -4,10 +4,12 @@ import Logo from "@/components/Logo";
 import ProductCard from "@/components/ProductCard";
 import Reveal from "@/components/Reveal";
 import { Icon, LeafArt } from "@/components/Icons";
-import { products } from "@/data/products";
+import { getCatalog } from "@/lib/server/products";
 import { testimonials, values } from "@/data/site";
 
-export default function Home() {
+export default async function Home() {
+  const products = await getCatalog();
+
   return (
     <>
       {/* Hero */}

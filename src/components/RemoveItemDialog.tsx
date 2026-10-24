@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef } from "react";
-import type { Product } from "@/data/products";
+import type { Product } from "@/lib/product";
 
 // Asks before taking an item out of the cart, offering to keep it in the wishlist instead.
 // A native <dialog>: Escape closes it and focus stays inside while it's open.

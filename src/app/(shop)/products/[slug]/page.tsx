@@ -7,27 +7,27 @@ import ProductCard from "@/components/ProductCard";
 import Reveal from "@/components/Reveal";
 import WishlistButton from "@/components/WishlistButton";
 import { Icon } from "@/components/Icons";
-import { getProduct, products } from "@/data/products";
-import { formatPrice } from "@/lib/format";
+import Price from "@/components/Price";
+import { getCatalog, getCatalogProduct } from "@/lib/server/products";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
+// Pages for current products are built ahead; products added later render on first visit
+export async function generateStaticParams() {
+  return (await getCatalog()).map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: PageProps<"/products/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await getCatalogProduct(slug);
   return product ? { title: product.name, description: product.shortDescription } : {};
 }
 
 export default async function ProductPage({ params }: PageProps<"/products/[slug]">) {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await getCatalogProduct(slug);
+  // Unknown and disabled products both 404
   if (!product) notFound();
 
-  const others = products.filter((p) => p.slug !== product.slug);
+  const others = (await getCatalog()).filter((p) => p.slug !== product.slug);
 
   return (
     <>
@@ -48,7 +48,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
             <p className="eyebrow">{product.category}</p>
             <h1 className="mt-4 text-4xl font-light md:text-5xl">{product.name}</h1>
             <div className="mt-4 flex items-center gap-4">
-              <span className="text-2xl font-medium text-gold">{formatPrice(product.price)}</span>
+              <Price product={product} className="text-2xl" />
               <span className="h-4 w-px bg-chocolate/20" />
               <span className="text-sm text-chocolate/60">{product.size}</span>
             </div>

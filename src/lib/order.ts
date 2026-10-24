@@ -42,3 +42,13 @@ export function validateAddress(a: Address) {
   return errors;
 }
 
+// Where a paid order is, as set by the shop in /admin/orders
+export const fulfillments = ["placed", "packed", "shipped", "delivered", "cancelled"] as const;
+export type Fulfillment = (typeof fulfillments)[number];
+export const fulfillmentLabels: Record<Fulfillment, string> = {
+  placed: "Order placed",
+  packed: "Packed",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};

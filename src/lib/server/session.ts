@@ -1,7 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { ObjectId } from "mongodb";
 import { getDb } from "./db";
 
@@ -44,4 +44,24 @@ export async function requireUser(returnTo: string) {
   const user = await getUser();
   if (!user) redirect(`/login/?next=${encodeURIComponent(returnTo)}`);
   return user;
+}
+
+// Admins are users with superAdmin: true in the database
+export async function getAdmin() {
+  const user = await getUser();
+  return user?.superAdmin === true ? user : null;
+}
+
+// For admin pages and actions. Guests go to the login page; logged-in non-admins get a 404,
+// so the admin area isn't advertised.
+export async function requireAdmin(returnTo = "/admin/") {
+  const user = await requireUser(returnTo);
+  if (user.superAdmin !== true) notFound();
+  return user;
+}
+
+// Where to go after logging in: admins land on the admin dashboard, unless they were checking
+// out (so test purchases still work); everyone else goes back to `next`.
+export function afterLoginPath(user: { superAdmin?: boolean }, next: string) {
+  return user.superAdmin === true && !next.startsWith("/checkout") ? "/admin/" : next;
 }

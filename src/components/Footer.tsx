@@ -2,9 +2,9 @@ import Link from "next/link";
 import Logo from "./Logo";
 import { SocialIcon } from "./Icons";
 import { navLinks, site } from "@/data/site";
-import { products } from "@/data/products";
+import type { Product } from "@/lib/product";
 
-export default function Footer() {
+export default function Footer({ products }: { products: Product[] }) {
   return (
     <footer className="bg-espresso text-ivory">
       <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 md:grid-cols-4 md:px-8">

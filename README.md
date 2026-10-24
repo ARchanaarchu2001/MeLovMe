@@ -44,12 +44,37 @@ every payment is also listed in the Razorpay Dashboard → Transactions.
 4. When the account is activated (KYC), generate **live** keys, replace both key variables, and add the webhook again
    in live mode (test and live webhooks are separate).
 
+## Admin (`/admin/`)
+
+Admin access is a `superAdmin` true/false field on each user in MongoDB (`users` collection). New users get
+`false`. To make someone an admin, have them sign up once, then in MongoDB Atlas → Browse Collections → `users`, find
+them by `phone`, and set `superAdmin` to `true` (set it back to `false` to remove access). Admins land on the admin
+**dashboard** (`/admin/`) after logging in (or on checkout, if they were checking out), and the header's account icon
+takes them there too. The admin area has its own sidebar layout (Dashboard, Orders, Customers, Products, View shop,
+Log out) instead of the shop header and footer. Anyone else gets "page not found". Admin → Customers → **Admins**
+lists the admins.
+
+- **Orders**: every order with payment status (Paid / Awaiting payment), search by order ID, name or phone, and
+  revenue totals. Open an order to see items, address, customer and Razorpay IDs, and to update its **status**
+  (Order placed → Packed → Shipped → Delivered, or Cancelled), courier and tracking number (shown to the customer)
+  and a private note. Cancelling doesn't refund: refund in the Razorpay Dashboard.
+- **Customers**: everyone who signed up, newest first, with orders, total spent and saved addresses.
+- **Products**: add and edit products, upload images (shrunk in the browser, then uploaded straight to Cloudinary in the `melovme/products` folder; MongoDB
+  stores only the image links), turn products
+  **on/off** (off = hidden from the shop and can't be bought), and set an **offer**: % or ₹ off, optionally between
+  two dates (India time). The shop shows the offer price, the struck-through regular price and an "X% off" badge,
+  and checkout charges the offer price.
+
+Shop pages are cached and refreshed straight away when a product is saved; offers also start and end on time
+(pages rebuild at least every 5 minutes).
+
 ## Database (MongoDB)
 
 | Collection | Contents |
 | --- | --- |
-| `users` | phone (login ID), name, saved addresses |
-| `orders` | items, prices, delivery address, total, status (`awaiting_payment` / `paid`), Razorpay order and payment IDs |
+| `users` | phone (login ID), name, saved addresses, `superAdmin` (true = admin access) |
+| `products` | the catalogue, managed in /admin/products. Filled from `src/data/seed-products.ts` the first time it's empty |
+| `orders` | items, prices, delivery address, total, payment status (`awaiting_payment` / `paid`), delivery status, tracking, Razorpay order and payment IDs |
 | `sessions` | login sessions (expire after 30 days) |
 | `otps` | development-only login codes, hashed (expire after 10 minutes) |
 
@@ -59,7 +84,7 @@ Indexes are created automatically on first connection.
 
 | What | File |
 | --- | --- |
-| Products (name, price, images, description) | `src/data/products.ts` |
+| Products, prices, offers, images | **/admin/products** (stored in MongoDB) |
 | Contact details, social links, testimonials, values | `src/data/site.ts` |
 | Shipping fee, order notification URL | `src/data/site.ts` (`shipping`, `orderEndpoint`) |
 | Payments | `src/lib/server/razorpay.ts`, `src/app/api/razorpay/webhook/route.ts`, `src/components/CheckoutFlow.tsx` |
@@ -67,17 +92,15 @@ Indexes are created automatically on first connection.
 | Checkout, addresses, orders | `src/app/actions/checkout.ts`, `src/components/CheckoutFlow.tsx` |
 | Brand colours | `src/app/globals.css` (`:root`) |
 | Page copy | `src/app/**/page.tsx` |
-| Product images | `public/images/` |
-
-To add a product, add an object to the `products` array and put its images in `public/images/`.
-A product page is generated automatically at `/products/<slug>/`.
+| Admin pages | `src/app/admin/`, `src/components/admin/`, `src/app/actions/admin.ts` |
 
 ## Going live checklist
 
 - Firebase console: enable Authentication -> Sign-in method -> Phone, upgrade to the Blaze plan (needed to send
   real SMS), and add your live domain under Authentication -> Settings -> Authorized domains.
-- Set `MONGODB_URI`, the four `NEXT_PUBLIC_FIREBASE_*` variables and the three `RAZORPAY_*` variables in the host's
-  environment variables.
+- Set `MONGODB_URI`, the four `NEXT_PUBLIC_FIREBASE_*` variables, the three `RAZORPAY_*` variables and the three
+  `CLOUDINARY_*` variables in the host's environment variables.
+- In /admin/products, turn off the ₹1 **Test Product**.
 - In MongoDB Atlas → Network Access, allow your host's IP addresses.
 - Razorpay: switch to live keys and add the live webhook (see Razorpay setup above).
 

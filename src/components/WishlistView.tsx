@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { TrashIcon } from "./Icons";
-import { formatPrice } from "@/lib/format";
+import Price from "./Price";
 import { moveToCart, removeFromWishlist, useWishlist } from "@/lib/wishlist";
 
 export default function WishlistView() {
@@ -39,7 +39,7 @@ export default function WishlistView() {
                 </Link>
                 <p className="mt-1 text-sm text-chocolate/60">{product.size}</p>
               </div>
-              <p className="font-medium text-gold">{formatPrice(product.price)}</p>
+              <Price product={product} className="justify-end" />
             </div>
             <div className="flex items-center justify-between gap-4">
               <button type="button" onClick={() => moveToCart(product.slug)} className="btn btn-primary !px-6 !py-3">

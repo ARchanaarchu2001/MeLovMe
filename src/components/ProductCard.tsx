@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import CartButton from "./CartButton";
+import Price from "./Price";
 import WishlistButton from "./WishlistButton";
-import type { Product } from "@/data/products";
-import { formatPrice } from "@/lib/format";
+import type { Product } from "@/lib/product";
 
 export default function ProductCard({ product }: { product: Product }) {
   const href = `/products/${product.slug}/`;
@@ -30,7 +30,7 @@ export default function ProductCard({ product }: { product: Product }) {
             <h3 className="text-xl font-medium group-hover:text-gold">{product.name}</h3>
             <p className="mt-1 text-sm text-chocolate/60">{product.size}</p>
           </div>
-          <p className="text-lg font-medium text-gold">{formatPrice(product.price)}</p>
+          <Price product={product} className="justify-end text-lg" />
         </div>
         <p className="mt-3 text-sm leading-relaxed text-chocolate/75">{product.shortDescription}</p>
       </Link>

@@ -1,11 +1,13 @@
-import { getProduct, type Product } from "@/data/products";
+import { useCatalog } from "@/components/CatalogProvider";
+import type { Product } from "./product";
 import { addToCart, setQty } from "./cart";
 import { createStore, useReady } from "./store";
 
 // Wishlist is a list of product slugs, saved in the visitor's browser like the cart.
-// Stored data is untrusted: keep only known products, once each
+// Stored data is untrusted: keep only strings, once each. Products that no longer exist or are
+// disabled are skipped in useWishlist().
 const store = createStore<string>("melovme-wishlist", (raw) => [
-  ...new Set(raw.filter((s): s is string => typeof s === "string" && !!getProduct(s))),
+  ...new Set(raw.filter((s): s is string => typeof s === "string")),
 ]);
 
 export function addToWishlist(slug: string) {
@@ -36,8 +38,9 @@ export function moveToCart(slug: string) {
 export function useWishlist() {
   const slugs = store.useItems();
   const ready = useReady();
+  const catalog = useCatalog();
   const products = slugs.flatMap((s): Product[] => {
-    const product = getProduct(s);
+    const product = catalog.get(s);
     return product ? [product] : [];
   });
 

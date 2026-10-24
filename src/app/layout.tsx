@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins, Quicksand } from "next/font/google";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import { site } from "@/data/site";
 import "./globals.css";
 
@@ -32,6 +30,8 @@ export const viewport: Viewport = {
   colorScheme: "only light",
 };
 
+// The page shell for the whole site. The shop adds its header and footer in (shop)/layout.tsx;
+// the admin area uses its own layout (admin/layout.tsx).
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${poppins.variable} ${quicksand.variable} h-full antialiased`}>
@@ -40,9 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <noscript>
           <style>{`.reveal{opacity:1!important;transform:none!important}`}</style>
         </noscript>
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        {children}
       </body>
     </html>
   );

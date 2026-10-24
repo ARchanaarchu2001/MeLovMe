@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import ProfileForm from "@/components/ProfileForm";
 import { logout } from "@/app/actions/auth";
 import { requireUser } from "@/lib/server/session";
@@ -11,6 +12,8 @@ export const metadata: Metadata = {
 
 export default async function ProfilePage() {
   const user = await requireUser("/profile/");
+  // Admins manage the shop from the dashboard (the header's account icon brings them there)
+  if (user.superAdmin) redirect("/admin/");
 
   return (
     <section className="mx-auto max-w-md px-5 py-12 md:py-20">

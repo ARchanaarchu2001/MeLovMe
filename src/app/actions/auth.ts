@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { firebaseEnabled } from "@/lib/firebase-config";
 import { getDb } from "@/lib/server/db";
 import { verifyPhoneToken } from "@/lib/server/firebase";
-import { createSession, deleteSession, requireUser } from "@/lib/server/session";
+import { afterLoginPath, createSession, deleteSession, requireUser } from "@/lib/server/session";
 
 // In production (and whenever Firebase is configured) the SMS OTP is sent and checked
 // by Firebase in the browser. Without Firebase, in development only, we generate the
@@ -93,13 +93,13 @@ export async function login(input: {
     const name = input.name?.trim() ?? "";
     if (!name) return { needsName: true };
     if (name.length < 2 || name.length > 80) return { error: "Please enter your name." };
-    user = { _id: new ObjectId(), phone, name, addresses: [], createdAt: new Date() };
+    user = { _id: new ObjectId(), phone, name, addresses: [], superAdmin: false, createdAt: new Date() };
     await users.insertOne(user);
   }
 
   await otps.deleteOne({ phone });
   await createSession(user._id);
-  return { redirectTo: safeNext(input.next) };
+  return { redirectTo: afterLoginPath(user, safeNext(input.next)) };
 }
 
 export async function logout() {

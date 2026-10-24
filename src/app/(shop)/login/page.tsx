@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import LoginForm from "@/components/LoginForm";
-import { getUser } from "@/lib/server/session";
+import { afterLoginPath, getUser } from "@/lib/server/session";
 
 export const metadata: Metadata = {
   title: "Login",
@@ -11,7 +11,8 @@ export const metadata: Metadata = {
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next } = await searchParams;
   const returnTo = typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/profile/";
-  if (await getUser()) redirect(returnTo);
+  const user = await getUser();
+  if (user) redirect(afterLoginPath(user, returnTo));
 
   return (
     <section className="mx-auto max-w-md px-5 py-12 md:py-20">

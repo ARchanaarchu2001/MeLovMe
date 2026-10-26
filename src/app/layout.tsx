@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Poppins, Quicksand } from "next/font/google";
-import { site } from "@/data/site";
 import "./globals.css";
 
 // Poppins is the brand typeface (tagline + body text)
@@ -17,13 +18,16 @@ const quicksand = Quicksand({
   weight: ["500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: `${site.name} — ${site.tagline}`,
-    template: `%s | ${site.name}`,
-  },
-  description: site.description,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("common.site");
+  return {
+    title: {
+      default: `${t("name")} — ${t("tagline")}`,
+      template: `%s | ${t("name")}`,
+    },
+    description: t("description"),
+  };
+}
 
 // Keep the brand colours as designed, even when the phone is in dark mode
 export const viewport: Viewport = {
@@ -32,15 +36,17 @@ export const viewport: Viewport = {
 
 // The page shell for the whole site. The shop adds its header and footer in (shop)/layout.tsx;
 // the admin area uses its own layout (admin/layout.tsx).
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getLocale();
   return (
-    <html lang="en" className={`${poppins.variable} ${quicksand.variable} h-full antialiased`}>
+    <html lang={locale} className={`${poppins.variable} ${quicksand.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         {/* Keep scroll-reveal content visible if JavaScript is disabled */}
         <noscript>
           <style>{`.reveal{opacity:1!important;transform:none!important}`}</style>
         </noscript>
-        {children}
+        {/* Gives client components the locale and messages for useTranslations() */}
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>
   );

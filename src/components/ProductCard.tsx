@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import CartButton from "./CartButton";
@@ -6,6 +7,7 @@ import WishlistButton from "./WishlistButton";
 import type { Product } from "@/lib/product";
 
 export default function ProductCard({ product }: { product: Product }) {
+  const t = useTranslations("products.card");
   const href = `/products/${product.slug}/`;
 
   return (
@@ -40,7 +42,7 @@ export default function ProductCard({ product }: { product: Product }) {
           href={href}
           className="border-b border-chocolate pb-1 text-xs uppercase tracking-[0.25em] transition-colors hover:border-gold hover:text-gold"
         >
-          View Details
+          {t("viewDetails")}
         </Link>
       </div>
     </div>

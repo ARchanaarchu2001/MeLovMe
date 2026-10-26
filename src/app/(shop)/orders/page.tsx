@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
-import { fulfillmentLabels } from "@/lib/order";
 import { getDb } from "@/lib/server/db";
 import { getCatalog } from "@/lib/server/products";
 import { requireUser } from "@/lib/server/session";
 
-export const metadata: Metadata = {
-  title: "My Orders",
-  robots: { index: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("account.orders");
+  return { title: t("metaTitle"), robots: { index: false } };
+}
 
 const orderDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
@@ -23,16 +23,17 @@ export default async function OrdersPage() {
     .limit(50)
     .toArray();
   const catalog = await getCatalog();
+  const t = await getTranslations("account");
 
   return (
     <section className="mx-auto max-w-3xl px-5 py-12 md:px-8 md:py-16">
-      <p className="eyebrow">My Account</p>
-      <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">My Orders</h1>
+      <p className="eyebrow">{t("eyebrow")}</p>
+      <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">{t("orders.title")}</h1>
 
       {orders.length === 0 ? (
         <div className="py-16 text-center">
-          <p className="text-chocolate/70">You haven&apos;t placed any orders yet.</p>
-          <Link href="/products/" className="btn btn-primary mt-8">Shop Products</Link>
+          <p className="text-chocolate/70">{t("orders.empty")}</p>
+          <Link href="/products/" className="btn btn-primary mt-8">{t("orders.shopProducts")}</Link>
         </div>
       ) : (
         <ul className="space-y-5">
@@ -61,15 +62,13 @@ export default async function OrdersPage() {
                     <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-chocolate/60">
                       <span>{orderDate.format(o.paidAt ?? o.createdAt)}</span>
                       <span aria-hidden="true">·</span>
-                      <span>
-                        {count} item{count === 1 ? "" : "s"}
-                      </span>
+                      <span>{t("orders.itemCount", { count })}</span>
                       <span
                         className={`rounded-full px-2.5 py-0.5 uppercase tracking-[0.15em] ${
                           status === "cancelled" ? "bg-red-700/10 text-red-800" : "bg-gold/15 text-chocolate"
                         }`}
                       >
-                        {fulfillmentLabels[status]}
+                        {t(`status.${status}`)}
                       </span>
                     </p>
                   </div>

@@ -1,9 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useState } from "react";
 
 export default function ProductGallery({ images, name }: { images: string[]; name: string }) {
+  const t = useTranslations("products.gallery");
   const [active, setActive] = useState(0);
 
   return (
@@ -24,7 +26,7 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
             <button
               key={src}
               onClick={() => setActive(i)}
-              aria-label={`Show image ${i + 1}`}
+              aria-label={t("showImage", { number: i + 1 })}
               className={`relative h-20 w-20 overflow-hidden rounded-2xl border-2 transition ${
                 i === active ? "border-gold" : "border-transparent opacity-70 hover:opacity-100"
               }`}

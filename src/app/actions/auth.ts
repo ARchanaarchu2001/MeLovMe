@@ -2,6 +2,7 @@
 
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { ObjectId } from "mongodb";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { firebaseEnabled } from "@/lib/firebase-config";
 import { getDb } from "@/lib/server/db";
@@ -26,13 +27,14 @@ const safeNext = (next: unknown) =>
   typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/profile/";
 
 export async function devSendOtp(phone: string): Promise<{ error: string } | { ok: true }> {
-  if (!devOtpAllowed()) return { error: "Login is not configured." };
-  if (!validPhone(phone)) return { error: "Enter a valid 10-digit mobile number." };
+  const t = await getTranslations("auth.errors");
+  if (!devOtpAllowed()) return { error: t("notConfigured") };
+  if (!validPhone(phone)) return { error: t("invalidPhone") };
   const { otps } = await getDb();
 
   const pending = await otps.findOne({ phone });
   if (pending && Date.now() - pending.sentAt.getTime() < RESEND_AFTER) {
-    return { error: "Please wait 30 seconds before requesting another OTP." };
+    return { error: t("resendWait") };
   }
 
   const code = String(randomInt(100000, 1000000));
@@ -53,14 +55,15 @@ export async function devSendOtp(phone: string): Promise<{ error: string } | { o
 }
 
 async function checkDevOtp(phone: string, code: string) {
-  if (!validPhone(phone) || !/^\d{6}$/.test(code)) return "Enter the 6-digit OTP.";
+  const t = await getTranslations("auth.errors");
+  if (!validPhone(phone) || !/^\d{6}$/.test(code)) return t("enterOtp");
   const { otps } = await getDb();
   const pending = await otps.findOne({ phone, expiresAt: { $gt: new Date() } });
-  if (!pending) return "This OTP has expired. Please request a new one.";
-  if (pending.attempts >= MAX_ATTEMPTS) return "Too many wrong attempts. Please request a new OTP.";
+  if (!pending) return t("otpExpired");
+  if (pending.attempts >= MAX_ATTEMPTS) return t("tooManyWrong");
   if (!timingSafeEqual(hashOtp(phone, code), Buffer.from(pending.codeHash, "hex"))) {
     await otps.updateOne({ phone }, { $inc: { attempts: 1 } });
-    return "Incorrect OTP. Please check and try again.";
+    return t("incorrectOtp");
   }
   return null;
 }
@@ -76,6 +79,7 @@ export async function login(input: {
   name?: string;
   next?: string;
 }): Promise<{ error: string } | { needsName: true } | { redirectTo: string }> {
+  const t = await getTranslations("auth.errors");
   let phone: string;
   if (devOtpAllowed()) {
     const error = await checkDevOtp(String(input.phone ?? ""), String(input.code ?? ""));
@@ -83,7 +87,7 @@ export async function login(input: {
     phone = String(input.phone);
   } else {
     const verified = await verifyPhoneToken(String(input.idToken ?? ""));
-    if (!verified) return { error: "We couldn't verify your number. Please request a new OTP." };
+    if (!verified) return { error: t("verifyFailed") };
     phone = verified;
   }
 
@@ -92,7 +96,7 @@ export async function login(input: {
   if (!user) {
     const name = input.name?.trim() ?? "";
     if (!name) return { needsName: true };
-    if (name.length < 2 || name.length > 80) return { error: "Please enter your name." };
+    if (name.length < 2 || name.length > 80) return { error: t("enterName") };
     user = { _id: new ObjectId(), phone, name, addresses: [], superAdmin: false, createdAt: new Date() };
     await users.insertOne(user);
   }
@@ -110,7 +114,7 @@ export async function logout() {
 export async function updateProfile(name: string): Promise<{ error: string } | { ok: true }> {
   const user = await requireUser("/profile/");
   const trimmed = String(name ?? "").trim();
-  if (trimmed.length < 2 || trimmed.length > 80) return { error: "Please enter your name." };
+  if (trimmed.length < 2 || trimmed.length > 80) return { error: (await getTranslations("auth.errors"))("enterName") };
   await (await getDb()).users.updateOne({ _id: user._id }, { $set: { name: trimmed } });
   return { ok: true };
 }

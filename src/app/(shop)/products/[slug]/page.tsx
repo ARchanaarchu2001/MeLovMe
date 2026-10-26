@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ProductGallery from "@/components/ProductGallery";
@@ -26,6 +27,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
   const product = await getCatalogProduct(slug);
   // Unknown and disabled products both 404
   if (!product) notFound();
+  const t = await getTranslations("products.detail");
 
   const others = (await getCatalog()).filter((p) => p.slug !== product.slug);
 
@@ -33,8 +35,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
     <>
       <section className="mx-auto max-w-7xl px-5 py-12 md:px-8 md:py-16">
         <nav className="mb-8 text-xs uppercase tracking-[0.2em] text-chocolate/50">
-          <Link href="/" className="hover:text-gold">Home</Link> /{" "}
-          <Link href="/products/" className="hover:text-gold">Products</Link> /{" "}
+          <Link href="/" className="hover:text-gold">{t("breadcrumbHome")}</Link> /{" "}
+          <Link href="/products/" className="hover:text-gold">{t("breadcrumbProducts")}</Link> /{" "}
           <span className="text-chocolate">{product.name}</span>
         </nav>
 
@@ -68,7 +70,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
             <div className="mt-12 divide-y divide-chocolate/10 border-y border-chocolate/10">
               <details className="group py-5" open>
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm uppercase tracking-[0.2em]">
-                  Key Ingredients <span className="text-gold transition group-open:rotate-45">+</span>
+                  {t("keyIngredients")} <span className="text-gold transition group-open:rotate-45">+</span>
                 </summary>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {product.ingredients.map((i) => (
@@ -78,7 +80,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               </details>
               <details className="group py-5">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm uppercase tracking-[0.2em]">
-                  How to Use <span className="text-gold transition group-open:rotate-45">+</span>
+                  {t("howToUse")} <span className="text-gold transition group-open:rotate-45">+</span>
                 </summary>
                 <p className="mt-4 text-sm leading-relaxed text-chocolate/75">{product.howToUse}</p>
               </details>
@@ -91,7 +93,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
         <section className="bg-ivory">
           <div className="mx-auto max-w-7xl px-5 py-20 md:px-8">
             <Reveal>
-              <h2 className="text-3xl font-light">You may also love</h2>
+              <h2 className="text-3xl font-light">{t("youMayAlsoLove")}</h2>
             </Reveal>
             <div className="mt-10 grid gap-14 md:grid-cols-2">
               {others.map((p, i) => (

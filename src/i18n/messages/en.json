@@ -1,0 +1,427 @@
+{
+  "common": {
+    "site": {
+      "name": "MELOVME",
+      "tagline": "Your Signature",
+      "description": "MELOVME is a premium body-care brand built around self-love and personal care. Thoughtfully crafted rituals that nourish your skin and become your signature."
+    },
+    "nav": {
+      "home": "Home",
+      "products": "Products",
+      "about": "Our Story",
+      "contact": "Contact",
+      "admin": "Admin"
+    },
+    "header": {
+      "wishlist": "Wishlist",
+      "cart": "Cart",
+      "account": "My account",
+      "itemCount": "{label}, {count, plural, one {# item} other {# items}}",
+      "shopNow": "Shop Now",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
+      "myAccount": "My Account",
+      "myOrders": "My Orders"
+    },
+    "footer": {
+      "blurb": "Premium body care built around self-love. More than just a scent.",
+      "explore": "Explore",
+      "products": "Products",
+      "getInTouch": "Get in touch",
+      "copyright": "© {year} MELOVME. All rights reserved."
+    },
+    "social": {
+      "instagram": "Instagram",
+      "facebook": "Facebook"
+    },
+    "values": {
+      "natural": {
+        "title": "Natural Care",
+        "text": "Botanical extracts and skin-loving oils chosen for gentle, everyday nourishment."
+      },
+      "hydration": {
+        "title": "Deep Hydration",
+        "text": "Light, fast-absorbing textures that lock in moisture from morning to night."
+      },
+      "glow": {
+        "title": "Lasting Glow",
+        "text": "A soft, healthy radiance that feels as good as it looks — never greasy."
+      },
+      "love": {
+        "title": "Made With Love",
+        "text": "Dermatologically tested, cruelty-free, and crafted in small, careful batches."
+      }
+    },
+    "loading": "Loading…",
+    "notFound": {
+      "title": "Page not found",
+      "text": "The page you're looking for doesn't exist.",
+      "backHome": "Back to Home"
+    }
+  },
+  "home": {
+    "hero": {
+      "eyebrow": "Premium Body Care",
+      "title": "More than <br></br>just a <shimmer>scent.</shimmer>",
+      "text": "Rituals of self-love, crafted to nourish your skin and linger like a memory. Discover care that becomes your signature.",
+      "explore": "Explore Products",
+      "ourStory": "Our Story",
+      "imageAlt": "MELOVME Signature Body Lotion with gift box",
+      "statValue": "24h",
+      "statLabel": "Lasting hydration"
+    },
+    "intro": {
+      "text": "MELOVME is born from a simple belief — <em>caring for yourself is an act of love.</em> Every product blends nature's finest ingredients with a touch of luxury, so your daily ritual feels personal, soft and unmistakably you."
+    },
+    "collection": {
+      "eyebrow": "The Collection",
+      "title": "Our signature essentials",
+      "viewAll": "View All"
+    },
+    "gifting": {
+      "imageAlt": "MELOVME gift box, velvet pouch and message card",
+      "eyebrow": "The Art of Gifting",
+      "title": "Wrapped in chocolate, <br></br> finished in <shimmer>gold.</shimmer>",
+      "text": "Every MELOVME gift arrives in a textured keepsake box with botanical gold-foil detailing, a soft velvet pouch and a personal message card — ready to make someone feel loved.",
+      "cta": "Discover the Gift Set"
+    },
+    "testimonialsSection": {
+      "eyebrow": "Kind Words",
+      "title": "Loved by our community",
+      "quote": "“{quote}”"
+    },
+    "testimonials": {
+      "priya": {
+        "quote": "The body lotion absorbs in seconds and the fragrance stays with me all day. It genuinely feels like a little luxury every morning.",
+        "name": "Priya R.",
+        "place": "Chennai"
+      },
+      "arjun": {
+        "quote": "I gifted the signature set to my sister and she hasn't stopped talking about the packaging. Beautiful inside and out.",
+        "name": "Arjun M.",
+        "place": "Bengaluru"
+      },
+      "sneha": {
+        "quote": "Finally a body-care brand that feels premium without being heavy. My skin has never felt softer.",
+        "name": "Sneha K.",
+        "place": "Hyderabad"
+      }
+    },
+    "partner": {
+      "title": "Partner with MELOVME",
+      "text": "Retailers, salons and corporate gifting partners — let's create something beautiful together.",
+      "cta": "Get in Touch"
+    }
+  },
+  "about": {
+    "meta": {
+      "title": "Our Story",
+      "description": "The story behind MELOVME — premium body care built around self-love."
+    },
+    "hero": {
+      "eyebrow": "Our Story",
+      "title": "Me. <shimmer>Love.</shimmer> Me.",
+      "text": "Our name says it all. MELOVME is a reminder to pause, care for yourself, and celebrate the person you are — one soft, fragrant ritual at a time."
+    },
+    "whoWeAre": {
+      "imageAlt": "MELOVME Body Lotion among fresh leaves and jasmine",
+      "eyebrow": "Who We Are",
+      "title": "Premium care, rooted in nature.",
+      "paragraph1": "MELOVME is a premium body-care identity built around the idea of self-love and personal care. We believe that the products you reach for every day should feel just as special as the moments you save them for.",
+      "paragraph2": "Our signature droplet represents what we stand for — skincare, hydration and nourishment. Our warm chocolate and soft ivory tones reflect the natural, sophisticated experience we bring to every bottle and box.",
+      "cta": "Shop the Collection"
+    },
+    "values": {
+      "eyebrow": "What We Believe",
+      "title": "Our promise to you"
+    },
+    "journey": {
+      "eyebrow": "Our Journey",
+      "title": "From an idea to your signature",
+      "milestones": {
+        "idea": {
+          "year": "2023",
+          "text": "The idea of MELOVME is born — body care that celebrates self-love."
+        },
+        "formulation": {
+          "year": "2024",
+          "text": "Months of formulation and testing to perfect our signature lotion."
+        },
+        "launch": {
+          "year": "2025",
+          "text": "MELOVME launches with the Signature Body Lotion and Gift Set."
+        },
+        "next": {
+          "year": "Next",
+          "text": "New rituals and fragrances to complete your signature collection."
+        }
+      }
+    }
+  },
+  "contact": {
+    "meta": {
+      "title": "Contact",
+      "description": "Get in touch with MELOVME for orders, partnerships and corporate gifting."
+    },
+    "hero": {
+      "eyebrow": "Contact",
+      "title": "Let's talk",
+      "text": "Questions about our products, wholesale, or corporate gifting? We'd love to hear from you."
+    },
+    "details": {
+      "title": "Reach us directly",
+      "email": "Email",
+      "phone": "Phone",
+      "studio": "Studio",
+      "studioValue": "No. 12, Rose Garden Street, Chennai, Tamil Nadu 600001",
+      "hours": "Hours",
+      "hoursValue": "Mon – Sat, 10:00 AM – 7:00 PM"
+    },
+    "form": {
+      "title": "Send us a message",
+      "name": "Your name",
+      "email": "Email address",
+      "phone": "Phone (optional)",
+      "topics": {
+        "general": "General enquiry",
+        "product": "Product question",
+        "wholesale": "Wholesale / retail",
+        "corporate": "Corporate gifting"
+      },
+      "message": "How can we help?",
+      "submit": "Send Message",
+      "sent": "Your email app should open now — thank you!",
+      "emailBody": "{message}\n\nName: {name}\nEmail: {email}\nPhone: {phone}"
+    }
+  },
+  "products": {
+    "meta": {
+      "title": "Products",
+      "description": "Explore the MELOVME collection of premium body-care essentials."
+    },
+    "hero": {
+      "eyebrow": "The Collection",
+      "title": "Our Products",
+      "text": "Thoughtfully formulated essentials for skin that feels loved — every single day."
+    },
+    "detail": {
+      "breadcrumbHome": "Home",
+      "breadcrumbProducts": "Products",
+      "keyIngredients": "Key Ingredients",
+      "howToUse": "How to Use",
+      "youMayAlsoLove": "You may also love"
+    },
+    "card": {
+      "viewDetails": "View Details"
+    },
+    "gallery": {
+      "showImage": "Show image {number}"
+    },
+    "addToCart": "Add to Cart",
+    "buyNow": "Buy Now",
+    "wishlist": {
+      "add": "Add to wishlist",
+      "remove": "Remove from wishlist"
+    },
+    "price": {
+      "regular": "Regular price {price}",
+      "off": "{percent}% off"
+    },
+    "qty": {
+      "decrease": "Decrease quantity",
+      "increase": "Increase quantity"
+    }
+  },
+  "cart": {
+    "page": {
+      "title": "Your Cart",
+      "eyebrow": "Shopping"
+    },
+    "empty": "Your cart is empty.",
+    "shopProducts": "Shop Products",
+    "removeLabel": "Remove {name}",
+    "remove": "Remove",
+    "orderSummary": "Order Summary",
+    "checkout": "Checkout",
+    "securePayment": "Secure payment by UPI, cards & netbanking",
+    "removeDialog": {
+      "close": "Close",
+      "title": "Remove item?",
+      "text": "Save it to your wishlist to buy later, or remove it from your cart.",
+      "moveToWishlist": "Move to Wishlist",
+      "remove": "Remove"
+    },
+    "summary": {
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "free": "Free",
+      "total": "Total"
+    },
+    "wishlist": {
+      "title": "Your Wishlist",
+      "eyebrow": "Saved for later",
+      "empty": "Your wishlist is empty.",
+      "shopProducts": "Shop Products",
+      "moveToCart": "Move to Cart",
+      "removeLabel": "Remove {name} from wishlist",
+      "remove": "Remove"
+    }
+  },
+  "checkout": {
+    "page": {
+      "title": "Checkout",
+      "eyebrow": "Secure Payment"
+    },
+    "flow": {
+      "confirmDelete": "Delete this address?\n\n{name}, {address}, {city}",
+      "loadFailed": "We couldn't load the payment page. Please check your connection and try again.",
+      "paymentDescription": "Order {id}",
+      "paymentFailed": "The payment didn't go through.",
+      "paymentReceived": "Payment received",
+      "openingOrder": "Opening your order…",
+      "cartEmpty": "Your cart is empty.",
+      "shopProducts": "Shop Products",
+      "deliveryAddress": "1. Delivery Address",
+      "chooseAddress": "Choose a delivery address",
+      "editAddress": "Edit address: {name}, {address}",
+      "edit": "Edit",
+      "deleteAddress": "Delete address: {name}, {address}",
+      "delete": "Delete",
+      "addAddress": "+ Add a new address",
+      "pleaseWait": "Please wait…",
+      "pay": "Pay {amount}",
+      "paymentMethods": "UPI (Google Pay, PhonePe, Paytm), cards and netbanking",
+      "payment": "2. Payment",
+      "completePayment": "Complete your payment of <strong>{amount}</strong> for order <strong>{id}</strong>. Pay with any UPI app — Google Pay, PhonePe, Paytm — or a card or netbanking.",
+      "deliveringTo": "Delivering to: <address></address>",
+      "changeAddress": "Change address",
+      "orderSummary": "Order Summary",
+      "moveToWishlist": "Move to Wishlist",
+      "remove": "Remove",
+      "editCart": "Edit cart",
+      "phone": "Phone: {phone}"
+    },
+    "address": {
+      "fields": {
+        "name": "Full name",
+        "phone": "Mobile number (10 digits)",
+        "address": "House no., street, area, landmark",
+        "city": "City",
+        "state": "State",
+        "pincode": "PIN code"
+      },
+      "required": "{label} *",
+      "errors": {
+        "required": "This field is required.",
+        "invalidPhone": "Enter a valid 10-digit mobile number.",
+        "invalidPincode": "Enter a valid 6-digit PIN code."
+      },
+      "saving": "Saving…",
+      "save": "Save Address",
+      "cancel": "Cancel"
+    },
+    "errors": {
+      "addressGone": "This address no longer exists. Please add it again.",
+      "tooManyAddresses": "You can save up to {max} addresses.",
+      "chooseAddress": "Please choose a delivery address.",
+      "cartEmpty": "Your cart is empty.",
+      "paymentStartFailed": "We couldn't start the payment right now. Please try again shortly.",
+      "orderNotFound": "We couldn't find this order.",
+      "paymentNotConfirmed": "We couldn't confirm your payment. If money was deducted, please contact us with order ID {id}."
+    }
+  },
+  "auth": {
+    "meta": {
+      "title": "Login"
+    },
+    "page": {
+      "eyebrowCheckout": "Login to continue checkout",
+      "eyebrow": "Welcome",
+      "title": "Login"
+    },
+    "form": {
+      "mobileNumber": "Mobile number",
+      "phonePlaceholder": "10-digit mobile number",
+      "sendOtp": "Send OTP",
+      "sendingOtp": "Sending OTP…",
+      "otpSent": "We've sent a 6-digit OTP to +91 {phone}.",
+      "verify": "Verify & Login",
+      "verifying": "Verifying…",
+      "changeNumber": "Change number",
+      "resendOtp": "Resend OTP",
+      "askName": "Welcome! What should we call you?",
+      "namePlaceholder": "Your name *",
+      "nameLabel": "Your name",
+      "createAccount": "Create Account",
+      "creatingAccount": "Creating account…"
+    },
+    "otpInput": {
+      "label": "One-time password",
+      "digit": "Digit {n}"
+    },
+    "errors": {
+      "invalidPhone": "Enter a valid 10-digit mobile number.",
+      "incorrectOtp": "Incorrect OTP. Please check and try again.",
+      "otpExpired": "This OTP has expired. Please request a new one.",
+      "tooManyRequests": "Too many attempts. Please wait a while and try again.",
+      "cantSendOtp": "We can't send OTPs right now. Please try again later.",
+      "generic": "Something went wrong. Please try again.",
+      "requestNewOtp": "Please request a new OTP.",
+      "notConfigured": "Login is not configured.",
+      "resendWait": "Please wait 30 seconds before requesting another OTP.",
+      "enterOtp": "Enter the 6-digit OTP.",
+      "tooManyWrong": "Too many wrong attempts. Please request a new OTP.",
+      "verifyFailed": "We couldn't verify your number. Please request a new OTP.",
+      "enterName": "Please enter your name."
+    }
+  },
+  "account": {
+    "eyebrow": "My Account",
+    "profile": {
+      "metaTitle": "My Profile",
+      "title": "Profile",
+      "myOrders": "My Orders",
+      "logOut": "Log out"
+    },
+    "profileForm": {
+      "name": "Name",
+      "editName": "Edit name",
+      "phone": "Phone number",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "saved": "Saved."
+    },
+    "orders": {
+      "metaTitle": "My Orders",
+      "title": "My Orders",
+      "empty": "You haven't placed any orders yet.",
+      "shopProducts": "Shop Products",
+      "itemCount": "{count, plural, one {# item} other {# items}}"
+    },
+    "order": {
+      "metaTitle": "Your Order",
+      "eyebrowPaid": "Thank you",
+      "eyebrowPending": "Almost there",
+      "titlePaid": "Order confirmed",
+      "titlePending": "Confirming payment",
+      "orderId": "Order ID",
+      "paidText": "We've received your payment of {amount}. We'll send you updates on +91 {phone}.",
+      "pendingText": "We haven't received confirmation of your payment yet. This usually takes a few seconds — refresh this page shortly. If money was deducted and this doesn't update, contact us with your order ID.",
+      "status": "Status",
+      "tracking": "Tracking: {number}",
+      "items": "Items",
+      "deliveringTo": "Delivering to",
+      "phone": "Phone: {phone}",
+      "continueShopping": "Continue Shopping",
+      "allOrders": "All my orders"
+    },
+    "status": {
+      "placed": "Order placed",
+      "packed": "Packed",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    }
+  }
+}

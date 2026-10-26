@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useTransition, type FormEvent, type InputHTMLAttributes } from "react";
 import { saveAddress } from "@/app/actions/checkout";
 import { addressFields, validateAddress, type Address, type SavedAddress } from "@/lib/order";
@@ -8,23 +9,22 @@ import Spinner from "./Spinner";
 export const field =
   "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-3 text-sm placeholder:text-chocolate/40 outline-none focus:border-gold";
 
+// Labels are in checkout.address.fields
 const fields: {
   name: keyof Address;
-  label: string;
   wide?: boolean;
   multiline?: boolean;
   props: InputHTMLAttributes<HTMLInputElement>;
 }[] = [
-  { name: "name", label: "Full name", props: { autoComplete: "name" } },
+  { name: "name", props: { autoComplete: "name" } },
   {
     name: "phone",
-    label: "Mobile number (10 digits)",
     props: { type: "tel", autoComplete: "tel-national", inputMode: "numeric", maxLength: 10 },
   },
-  { name: "address", label: "House no., street, area, landmark", wide: true, multiline: true, props: {} },
-  { name: "city", label: "City", props: { autoComplete: "address-level2" } },
-  { name: "state", label: "State", props: { autoComplete: "address-level1" } },
-  { name: "pincode", label: "PIN code", props: { autoComplete: "postal-code", inputMode: "numeric", maxLength: 6 } },
+  { name: "address", wide: true, multiline: true, props: {} },
+  { name: "city", props: { autoComplete: "address-level2" } },
+  { name: "state", props: { autoComplete: "address-level1" } },
+  { name: "pincode", props: { autoComplete: "postal-code", inputMode: "numeric", maxLength: 6 } },
 ];
 
 // Shipping address form: adds a new address to the customer's account, or edits `editId`
@@ -39,6 +39,7 @@ export default function AddressForm({
   onSaved: (address: SavedAddress) => void;
   onCancel?: () => void;
 }) {
+  const t = useTranslations("checkout.address");
   const [errors, setErrors] = useState<Partial<Record<keyof Address, string>>>({});
   const [pending, startTransition] = useTransition();
 
@@ -50,7 +51,7 @@ export default function AddressForm({
 
     // Validate every field up front so all problems are shown together, not one at a time
     const found = validateAddress(address);
-    setErrors(found);
+    setErrors(Object.fromEntries(Object.entries(found).map(([f, code]) => [f, t(`errors.${code}`)])));
     const firstInvalid = fields.find((f) => found[f.name]);
     if (firstInvalid) return (form.elements.namedItem(firstInvalid.name) as HTMLElement).focus();
 
@@ -65,12 +66,13 @@ export default function AddressForm({
     <form onSubmit={handleSubmit} noValidate className="grid h-fit gap-5 sm:grid-cols-2">
       {fields.map((f) => {
         const error = errors[f.name];
+        const label = t(`fields.${f.name}`);
         const common = {
           name: f.name,
           defaultValue: defaults[f.name],
           required: true,
-          placeholder: `${f.label} *`,
-          "aria-label": f.label,
+          placeholder: t("required", { label }),
+          "aria-label": label,
           "aria-invalid": !!error,
           "aria-describedby": error ? `${f.name}-error` : undefined,
           className: `${field} ${error ? "!border-red-700" : ""}`,
@@ -95,7 +97,7 @@ export default function AddressForm({
       <div className="flex flex-wrap items-center gap-6 sm:col-span-2">
         <button type="submit" className="btn btn-primary" disabled={pending}>
           {pending && <Spinner />}
-          {pending ? "Saving…" : "Save Address"}
+          {pending ? t("saving") : t("save")}
         </button>
         {onCancel && (
           <button
@@ -103,7 +105,7 @@ export default function AddressForm({
             onClick={onCancel}
             className="text-xs uppercase tracking-[0.2em] text-chocolate/60 hover:text-gold"
           >
-            Cancel
+            {t("cancel")}
           </button>
         )}
       </div>

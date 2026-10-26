@@ -33,12 +33,15 @@ export type Order = {
 
 export const addressFields = ["name", "phone", "address", "city", "state", "pincode"] as const;
 
-// Returns an error message per invalid field (empty object when the address is valid)
+// Why a field is invalid; the message for each is in checkout.address.errors
+export type AddressError = "required" | "invalidPhone" | "invalidPincode";
+
+// Returns an error code per invalid field (empty object when the address is valid)
 export function validateAddress(a: Address) {
-  const errors: Partial<Record<keyof Address, string>> = {};
-  for (const f of addressFields) if (!a[f]?.trim()) errors[f] = "This field is required.";
-  if (a.phone && !/^[6-9]\d{9}$/.test(a.phone)) errors.phone = "Enter a valid 10-digit mobile number.";
-  if (a.pincode && !/^[1-9]\d{5}$/.test(a.pincode)) errors.pincode = "Enter a valid 6-digit PIN code.";
+  const errors: Partial<Record<keyof Address, AddressError>> = {};
+  for (const f of addressFields) if (!a[f]?.trim()) errors[f] = "required";
+  if (a.phone && !/^[6-9]\d{9}$/.test(a.phone)) errors.phone = "invalidPhone";
+  if (a.pincode && !/^[1-9]\d{5}$/.test(a.pincode)) errors.pincode = "invalidPincode";
   return errors;
 }
 

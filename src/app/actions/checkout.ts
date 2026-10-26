@@ -1,6 +1,7 @@
 "use server";
 
 import { ObjectId } from "mongodb";
+import { getTranslations } from "next-intl/server";
 import { addressFields, MAX_QTY, shippingFor, validateAddress, type Address, type CartItem, type Order, type SavedAddress } from "@/lib/order";
 import { priceOf } from "@/lib/product";
 import { getDb, type OrderDoc } from "@/lib/server/db";
@@ -20,23 +21,26 @@ function findAddressId(user: { addresses: { _id: ObjectId }[] }, id: unknown) {
 export async function saveAddress(
   input: Address,
   id?: string,
-): Promise<{ errors: ReturnType<typeof validateAddress> } | SavedAddress> {
+): Promise<{ errors: Partial<Record<keyof Address, string>> } | SavedAddress> {
   const user = await requireUser("/checkout/");
   // Keep only the known fields, as trimmed strings
   const address = Object.fromEntries(addressFields.map((f) => [f, String(input?.[f] ?? "").trim()])) as Address;
-  const errors = validateAddress(address);
-  if (Object.keys(errors).length) return { errors };
+  const invalid = validateAddress(address);
+  if (Object.keys(invalid).length) {
+    const t = await getTranslations("checkout.address.errors");
+    return { errors: Object.fromEntries(Object.entries(invalid).map(([f, code]) => [f, t(code)])) };
+  }
   const { users } = await getDb();
 
   if (id) {
     const _id = findAddressId(user, id);
-    if (!_id) return { errors: { address: "This address no longer exists. Please add it again." } };
+    if (!_id) return { errors: { address: (await getTranslations("checkout.errors"))("addressGone") } };
     await users.updateOne({ _id: user._id, "addresses._id": _id }, { $set: { "addresses.$": { ...address, _id } } });
     return { ...address, id };
   }
 
   if (user.addresses.length >= MAX_ADDRESSES) {
-    return { errors: { address: `You can save up to ${MAX_ADDRESSES} addresses.` } };
+    return { errors: { address: (await getTranslations("checkout.errors"))("tooManyAddresses", { max: MAX_ADDRESSES }) } };
   }
   const _id = new ObjectId();
   await users.updateOne({ _id: user._id }, { $push: { addresses: { ...address, _id } } });
@@ -60,8 +64,9 @@ function newOrderId() {
 // Prices come from the catalogue on the server, never from the browser.
 export async function createOrder(addressId: string, cart: CartItem[]): Promise<{ error: string } | Order> {
   const user = await requireUser("/checkout/");
+  const t = await getTranslations("checkout.errors");
   const address = user.addresses.find((a) => a._id.toHexString() === addressId);
-  if (!address) return { error: "Please choose a delivery address." };
+  if (!address) return { error: t("chooseAddress") };
 
   // Only enabled products, at today's price (the offer price while an offer runs)
   const catalog = await getCatalog();
@@ -74,7 +79,7 @@ export async function createOrder(addressId: string, cart: CartItem[]): Promise<
       { slug: product.slug, name: product.name, size: product.size, qty, price, total: price * qty, image: product.images[0] },
     ];
   });
-  if (!items.length) return { error: "Your cart is empty." };
+  if (!items.length) return { error: t("cartEmpty") };
 
   const subtotal = items.reduce((sum, i) => sum + i.total, 0);
   const shipping = shippingFor(subtotal);
@@ -86,7 +91,7 @@ export async function createOrder(addressId: string, cart: CartItem[]): Promise<
     razorpayOrderId = await createRazorpayOrder(total, id);
   } catch (err) {
     console.error(err);
-    return { error: "We couldn't start the payment right now. Please try again shortly." };
+    return { error: t("paymentStartFailed") };
   }
 
   const order: OrderDoc = {
@@ -123,12 +128,13 @@ export async function confirmPayment(
 ): Promise<{ error: string } | { ok: true }> {
   const user = await requireUser("/checkout/");
   const order = await (await getDb()).orders.findOne({ _id: String(orderId), userId: user._id });
-  if (!order) return { error: "We couldn't find this order." };
+  const t = await getTranslations("checkout.errors");
+  if (!order) return { error: t("orderNotFound") };
 
   const paymentId = String(payment?.razorpay_payment_id ?? "");
   // Use our own record of the Razorpay order ID, never one sent by the browser
   if (!paymentId || !isValidPaymentSignature(order.razorpayOrderId, paymentId, payment?.razorpay_signature)) {
-    return { error: `We couldn't confirm your payment. If money was deducted, please contact us with order ID ${order._id}.` };
+    return { error: t("paymentNotConfirmed", { id: order._id }) };
   }
   await markOrderPaid(order.razorpayOrderId, paymentId);
   return { ok: true };

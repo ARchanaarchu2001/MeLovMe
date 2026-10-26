@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import type { Product } from "@/lib/product";
@@ -17,6 +18,7 @@ export default function RemoveItemDialog({
   onRemove: () => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("cart.removeDialog");
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function RemoveItemDialog({
         <button
           type="button"
           onClick={() => ref.current?.close()}
-          aria-label="Close"
+          aria-label={t("close")}
           className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-chocolate/60 transition-colors hover:bg-chocolate/10 hover:text-chocolate"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
@@ -49,19 +51,19 @@ export default function RemoveItemDialog({
             <Image src={product.images[0]} alt="" fill sizes="64px" className="object-cover" />
           </div>
           <div>
-            <h2 id="remove-item-title" className="font-medium">Remove item?</h2>
+            <h2 id="remove-item-title" className="font-medium">{t("title")}</h2>
             <p className="mt-1 text-sm text-chocolate/60">{product.name}</p>
           </div>
         </div>
 
-        <p className="mt-6 text-sm text-chocolate/75">Save it to your wishlist to buy later, or remove it from your cart.</p>
+        <p className="mt-6 text-sm text-chocolate/75">{t("text")}</p>
 
         <div className="mt-6 grid gap-3">
           <button type="button" onClick={onMoveToWishlist} className="btn btn-primary w-full" autoFocus>
-            Move to Wishlist
+            {t("moveToWishlist")}
           </button>
           <button type="button" onClick={onRemove} className="btn btn-outline w-full">
-            Remove
+            {t("remove")}
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 import { TrashIcon } from "./Icons";
@@ -14,6 +15,7 @@ import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
 
 export default function CartView() {
+  const t = useTranslations("cart");
   const { ready, lines, subtotal, shipping, total } = useCart();
   // The product whose dustbin was clicked, while the "remove item?" dialog is open
   const [removing, setRemoving] = useState<Product | null>(null);
@@ -24,8 +26,8 @@ export default function CartView() {
   if (lines.length === 0) {
     return (
       <div className="py-16 text-center">
-        <p className="text-chocolate/70">Your cart is empty.</p>
-        <Link href="/products/" className="btn btn-primary mt-8">Shop Products</Link>
+        <p className="text-chocolate/70">{t("empty")}</p>
+        <Link href="/products/" className="btn btn-primary mt-8">{t("shopProducts")}</Link>
       </div>
     );
   }
@@ -58,8 +60,8 @@ export default function CartView() {
                 <button
                   type="button"
                   onClick={() => setRemoving(product)}
-                  aria-label={`Remove ${product.name}`}
-                  title="Remove"
+                  aria-label={t("removeLabel", { name: product.name })}
+                  title={t("remove")}
                   className="flex h-10 w-10 items-center justify-center rounded-full text-chocolate/60 transition-colors hover:bg-red-700/10 hover:text-red-700"
                 >
                   <TrashIcon className="h-5 w-5" />
@@ -71,10 +73,10 @@ export default function CartView() {
       </ul>
 
       <aside className="h-fit rounded-[2rem] bg-ivory p-8">
-        <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">Order Summary</h2>
+        <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">{t("orderSummary")}</h2>
         <OrderSummary subtotal={subtotal} shipping={shipping} total={total} />
-        <Link href="/checkout/" className="btn btn-primary mt-8 w-full">Checkout</Link>
-        <p className="mt-4 text-center text-xs text-chocolate/60">Secure payment by UPI, cards &amp; netbanking</p>
+        <Link href="/checkout/" className="btn btn-primary mt-8 w-full">{t("checkout")}</Link>
+        <p className="mt-4 text-center text-xs text-chocolate/60">{t("securePayment")}</p>
       </aside>
 
       {removing && (

@@ -1,29 +1,31 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import ProductCard from "@/components/ProductCard";
 import Reveal from "@/components/Reveal";
 import { getCatalog } from "@/lib/server/products";
 
-export const metadata: Metadata = {
-  title: "Products",
-  description: "Explore the MELOVME collection of premium body-care essentials.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("products.meta");
+  return { title: t("title"), description: t("description") };
+}
 
 export default async function ProductsPage() {
+  const t = await getTranslations("products.hero");
   const products = await getCatalog();
 
   return (
     <>
       <section className="bg-ivory">
         <div className="mx-auto max-w-7xl px-5 py-20 text-center md:px-8">
-          <p className="eyebrow animate-fade-up">The Collection</p>
+          <p className="eyebrow animate-fade-up">{t("eyebrow")}</p>
           <h1 className="animate-fade-up mt-4 text-4xl font-light md:text-6xl" style={{ animationDelay: "150ms" }}>
-            Our Products
+            {t("title")}
           </h1>
           <p
             className="animate-fade-up mx-auto mt-6 max-w-xl leading-relaxed text-chocolate/70"
             style={{ animationDelay: "300ms" }}
           >
-            Thoughtfully formulated essentials for skin that feels loved — every single day.
+            {t("text")}
           </p>
         </div>
       </section>

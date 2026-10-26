@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import type { ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
@@ -10,26 +11,28 @@ import OtpInput from "./OtpInput";
 import Spinner from "./Spinner";
 
 // Friendly messages for the Firebase errors customers can actually hit
-const firebaseErrors: Record<string, string> = {
-  "auth/invalid-phone-number": "Enter a valid 10-digit mobile number.",
-  "auth/invalid-verification-code": "Incorrect OTP. Please check and try again.",
-  "auth/code-expired": "This OTP has expired. Please request a new one.",
-  "auth/too-many-requests": "Too many attempts. Please wait a while and try again.",
-  "auth/quota-exceeded": "We can't send OTPs right now. Please try again later.",
+// (keys in auth.errors)
+const firebaseErrors: Record<string, "invalidPhone" | "incorrectOtp" | "otpExpired" | "tooManyRequests" | "cantSendOtp"> = {
+  "auth/invalid-phone-number": "invalidPhone",
+  "auth/invalid-verification-code": "incorrectOtp",
+  "auth/code-expired": "otpExpired",
+  "auth/too-many-requests": "tooManyRequests",
+  "auth/quota-exceeded": "cantSendOtp",
   // Firebase console settings not finished (SMS region policy / Blaze plan) — see README
-  "auth/operation-not-allowed": "We can't send OTPs right now. Please try again later.",
-  "auth/billing-not-enabled": "We can't send OTPs right now. Please try again later.",
+  "auth/operation-not-allowed": "cantSendOtp",
+  "auth/billing-not-enabled": "cantSendOtp",
 };
 
-function errorMessage(err: unknown) {
+function errorKey(err: unknown) {
   console.error(err);
   const code = (err as { code?: string })?.code ?? "";
-  return firebaseErrors[code] ?? "Something went wrong. Please try again.";
+  return firebaseErrors[code] ?? "generic";
 }
 
 // Mobile number -> SMS OTP -> (first time only) name.
 // Firebase sends and checks the OTP, then the server checks Firebase's proof and logs the customer in.
 export default function LoginForm({ next }: { next: string }) {
+  const t = useTranslations("auth");
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -61,12 +64,12 @@ export default function LoginForm({ next }: { next: string }) {
         }
         setStep("otp");
         setCode("");
-        setNotice(`We've sent a 6-digit OTP to +91 ${phone}.`);
+        setNotice(t("form.otpSent", { phone }));
       } catch (err) {
         // A used reCAPTCHA can't be reused, so start fresh for the next try
         verifier.current?.clear();
         verifier.current = null;
-        setError(errorMessage(err));
+        setError(t(`errors.${errorKey(err)}`));
       }
     });
   }
@@ -85,7 +88,7 @@ export default function LoginForm({ next }: { next: string }) {
     startTransition(async () => {
       try {
         if (firebaseEnabled) {
-          if (!confirmation.current) return setError("Please request a new OTP.");
+          if (!confirmation.current) return setError(t("errors.requestNewOtp"));
           const { signOut } = await import("firebase/auth");
           const { firebaseAuth } = await import("@/lib/firebase");
           const result = await confirmation.current.confirm(code);
@@ -95,7 +98,7 @@ export default function LoginForm({ next }: { next: string }) {
         }
         await finish();
       } catch (err) {
-        setError(errorMessage(err));
+        setError(t(`errors.${errorKey(err)}`));
       }
     });
   }
@@ -111,7 +114,7 @@ export default function LoginForm({ next }: { next: string }) {
       {step === "phone" && (
         <form onSubmit={requestOtp} className="space-y-5">
           <label className="block text-sm text-chocolate/75" htmlFor="phone">
-            Mobile number
+            {t("form.mobileNumber")}
           </label>
           <div className="flex items-center gap-3">
             <span className="text-sm text-chocolate/60">+91</span>
@@ -122,7 +125,7 @@ export default function LoginForm({ next }: { next: string }) {
               type="tel"
               inputMode="numeric"
               autoComplete="tel-national"
-              placeholder="10-digit mobile number"
+              placeholder={t("form.phonePlaceholder")}
               required
               autoFocus
               className={field}
@@ -131,7 +134,7 @@ export default function LoginForm({ next }: { next: string }) {
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
           <button type="submit" className="btn btn-primary w-full" disabled={pending || !/^[6-9]\d{9}$/.test(phone)}>
             {pending && <Spinner />}
-            {pending ? "Sending OTP…" : "Send OTP"}
+            {pending ? t("form.sendingOtp") : t("form.sendOtp")}
           </button>
         </form>
       )}
@@ -150,14 +153,14 @@ export default function LoginForm({ next }: { next: string }) {
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
           <button type="submit" className="btn btn-primary w-full" disabled={pending || code.length !== 6}>
             {pending && <Spinner />}
-            {pending ? "Verifying…" : "Verify & Login"}
+            {pending ? t("form.verifying") : t("form.verify")}
           </button>
           <div className="flex justify-between text-xs uppercase tracking-[0.2em] text-chocolate/60">
             <button type="button" onClick={() => setStep("phone")} className="hover:text-gold">
-              Change number
+              {t("form.changeNumber")}
             </button>
             <button type="button" onClick={() => requestOtp()} disabled={pending} className="hover:text-gold">
-              Resend OTP
+              {t("form.resendOtp")}
             </button>
           </div>
         </form>
@@ -165,13 +168,13 @@ export default function LoginForm({ next }: { next: string }) {
 
       {step === "name" && (
         <form onSubmit={handleName} className="space-y-5">
-          <p className="text-sm text-chocolate/75">Welcome! What should we call you?</p>
+          <p className="text-sm text-chocolate/75">{t("form.askName")}</p>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoComplete="name"
-            placeholder="Your name *"
-            aria-label="Your name"
+            placeholder={t("form.namePlaceholder")}
+            aria-label={t("form.nameLabel")}
             required
             autoFocus
             className={field}
@@ -179,7 +182,7 @@ export default function LoginForm({ next }: { next: string }) {
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
           <button type="submit" className="btn btn-primary w-full" disabled={pending || name.trim().length < 2}>
             {pending && <Spinner />}
-            {pending ? "Creating account…" : "Create Account"}
+            {pending ? t("form.creatingAccount") : t("form.createAccount")}
           </button>
         </form>
       )}

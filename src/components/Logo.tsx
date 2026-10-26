@@ -1,6 +1,8 @@
 // Text recreation of the stacked "me / lov. / me" wordmark with the droplet accent.
 // Replace with the official SVG logo file once available (e.g. /public/logo.svg).
 
+import { useTranslations } from "next-intl";
+
 type LogoProps = {
   size?: "sm" | "md" | "lg";
   tagline?: boolean;
@@ -22,9 +24,10 @@ export function Droplet({ className = "" }: { className?: string }) {
 }
 
 export default function Logo({ size = "md", tagline = true, className = "" }: LogoProps) {
+  const t = useTranslations("common.site");
   const s = sizes[size];
   return (
-    <span className={`inline-flex flex-col items-center ${className}`} aria-label="MELOVME — Your Signature">
+    <span className={`inline-flex flex-col items-center ${className}`} aria-label={`${t("name")} — ${t("tagline")}`}>
       <span
         className={`font-logo font-semibold leading-[0.78] tracking-[-0.04em] flex flex-col items-start ${s.text}`}
         aria-hidden="true"
@@ -38,7 +41,7 @@ export default function Logo({ size = "md", tagline = true, className = "" }: Lo
       </span>
       {tagline && (
         <span className={`mt-[0.6em] font-sans font-medium uppercase tracking-[0.28em] ${s.tag}`}>
-          Your Signature
+          {t("tagline")}
         </span>
       )}
     </span>

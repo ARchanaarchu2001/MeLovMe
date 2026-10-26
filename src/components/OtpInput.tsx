@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, type ClipboardEvent, type KeyboardEvent } from "react";
 
 const LENGTH = 6;
@@ -15,6 +16,7 @@ export default function OtpInput({
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("auth.otpInput");
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
   // The code as of the latest keystroke. Focus moves before React re-renders with the new
   // value, so the focus handler must read this rather than the (stale) `value` prop.
@@ -51,7 +53,7 @@ export default function OtpInput({
   }
 
   return (
-    <div className="flex justify-between gap-2" role="group" aria-label="One-time password">
+    <div className="flex justify-between gap-2" role="group" aria-label={t("label")}>
       {Array.from({ length: LENGTH }, (_, i) => (
         <input
           key={i}
@@ -73,7 +75,7 @@ export default function OtpInput({
           autoComplete={i === 0 ? "one-time-code" : "off"}
           autoFocus={i === 0}
           disabled={disabled}
-          aria-label={`Digit ${i + 1}`}
+          aria-label={t("digit", { n: i + 1 })}
           className="h-14 w-full min-w-0 max-w-14 rounded-xl border border-chocolate/20 bg-white/60 text-center text-xl font-medium outline-none transition-colors focus:border-gold disabled:opacity-60"
         />
       ))}

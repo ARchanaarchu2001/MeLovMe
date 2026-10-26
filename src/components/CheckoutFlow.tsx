@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -54,6 +55,7 @@ export default function CheckoutFlow({
   user: { name: string; phone: string };
   razorpayKey: string;
 }) {
+  const t = useTranslations("checkout.flow");
   const router = useRouter();
   const cart = useCart();
   const [addresses, setAddresses] = useState(initialAddresses);
@@ -81,7 +83,7 @@ export default function CheckoutFlow({
   }
 
   function handleDelete(address: SavedAddress) {
-    if (!window.confirm(`Delete this address?\n\n${address.name}, ${address.address}, ${address.city}`)) return;
+    if (!window.confirm(t("confirmDelete", { name: address.name, address: address.address, city: address.city }))) return;
     setError("");
     startTransition(async () => {
       await deleteAddress(address.id);
@@ -109,7 +111,7 @@ export default function CheckoutFlow({
         setOrder(res);
       }
       if (!(await loadRazorpay()) || !window.Razorpay) {
-        return setError("We couldn't load the payment page. Please check your connection and try again.");
+        return setError(t("loadFailed"));
       }
       openPayment(current);
     });
@@ -122,7 +124,7 @@ export default function CheckoutFlow({
       amount: o.total * 100, // paise
       currency: "INR",
       name: site.name,
-      description: `Order ${o.id}`,
+      description: t("paymentDescription", { id: o.id }),
       prefill: { name: user.name, contact: `+91${user.phone}` },
       notes: { order: o.id },
       theme: { color: "#462b1b" },
@@ -139,7 +141,7 @@ export default function CheckoutFlow({
       modal: { ondismiss: () => setPaying(false) },
     });
     // Razorpay lets the customer retry inside its window; we just show why the last try failed
-    checkout.on("payment.failed", (res) => setError(res.error?.description ?? "The payment didn't go through."));
+    checkout.on("payment.failed", (res) => setError(res.error?.description ?? t("paymentFailed")));
     setPaying(true);
     checkout.open();
   }
@@ -148,8 +150,8 @@ export default function CheckoutFlow({
   if (placed) {
     return (
       <div className="py-16 text-center">
-        <p className="eyebrow">Payment received</p>
-        <p className="mt-4 text-chocolate/70">Opening your order…</p>
+        <p className="eyebrow">{t("paymentReceived")}</p>
+        <p className="mt-4 text-chocolate/70">{t("openingOrder")}</p>
       </div>
     );
   }
@@ -159,8 +161,8 @@ export default function CheckoutFlow({
   if (!order && cart.lines.length === 0) {
     return (
       <div className="py-16 text-center">
-        <p className="text-chocolate/70">Your cart is empty.</p>
-        <Link href="/products/" className="btn btn-primary mt-8">Shop Products</Link>
+        <p className="text-chocolate/70">{t("cartEmpty")}</p>
+        <Link href="/products/" className="btn btn-primary mt-8">{t("shopProducts")}</Link>
       </div>
     );
   }
@@ -176,7 +178,7 @@ export default function CheckoutFlow({
     <div className="grid gap-12 lg:grid-cols-[1fr_22rem]">
       {!order ? (
         <div>
-          <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">1. Delivery Address</h2>
+          <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">{t("deliveryAddress")}</h2>
           {editing ? (
             <AddressForm
               key={editing.id}
@@ -194,7 +196,7 @@ export default function CheckoutFlow({
           ) : (
             <>
               <fieldset className="grid gap-4">
-                <legend className="sr-only">Choose a delivery address</legend>
+                <legend className="sr-only">{t("chooseAddress")}</legend>
                 {addresses.map((a) => (
                   <div
                     key={a.id}
@@ -218,8 +220,8 @@ export default function CheckoutFlow({
                         type="button"
                         onClick={() => setEditing(a)}
                         disabled={pending}
-                        aria-label={`Edit address: ${a.name}, ${a.address}`}
-                        title="Edit"
+                        aria-label={t("editAddress", { name: a.name, address: a.address })}
+                        title={t("edit")}
                         className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gold/15 hover:text-gold"
                       >
                         <PencilIcon />
@@ -228,8 +230,8 @@ export default function CheckoutFlow({
                         type="button"
                         onClick={() => handleDelete(a)}
                         disabled={pending}
-                        aria-label={`Delete address: ${a.name}, ${a.address}`}
-                        title="Delete"
+                        aria-label={t("deleteAddress", { name: a.name, address: a.address })}
+                        title={t("delete")}
                         className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-red-700/10 hover:text-red-700"
                       >
                         <TrashIcon />
@@ -243,35 +245,37 @@ export default function CheckoutFlow({
                 onClick={() => setAdding(true)}
                 className="mt-5 text-xs uppercase tracking-[0.2em] text-gold hover:text-chocolate"
               >
-                + Add a new address
+                {t("addAddress")}
               </button>
               {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
               <div className="mt-8">
                 <button type="button" onClick={handlePay} className="btn btn-primary" disabled={busy || !selectedId}>
                   {busy && <Spinner />}
-                  {busy ? "Please wait…" : `Pay ${formatPrice(cart.total)}`}
+                  {busy ? t("pleaseWait") : t("pay", { amount: formatPrice(cart.total) })}
                 </button>
-                <p className="mt-3 text-xs text-chocolate/60">UPI (Google Pay, PhonePe, Paytm), cards and netbanking</p>
+                <p className="mt-3 text-xs text-chocolate/60">{t("paymentMethods")}</p>
               </div>
             </>
           )}
         </div>
       ) : (
         <div>
-          <h2 className="text-sm uppercase tracking-[0.2em]">2. Payment</h2>
+          <h2 className="text-sm uppercase tracking-[0.2em]">{t("payment")}</h2>
           <p className="mt-4 text-sm leading-relaxed text-chocolate/75">
-            Complete your payment of <strong className="text-chocolate">{formatPrice(order.total)}</strong> for order{" "}
-            <strong className="text-chocolate">{order.id}</strong>. Pay with any UPI app — Google Pay, PhonePe, Paytm —
-            or a card or netbanking.
+            {t.rich("completePayment", {
+              amount: formatPrice(order.total),
+              id: order.id,
+              strong: (chunks) => <strong className="text-chocolate">{chunks}</strong>,
+            })}
           </p>
           <p className="mt-6 text-sm text-chocolate/75">
-            Delivering to: <AddressText address={order.address} inline />
+            {t.rich("deliveringTo", { address: () => <AddressText address={order.address} inline /> })}
           </p>
           {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
           <div className="mt-8 flex flex-wrap items-center gap-6">
             <button type="button" onClick={handlePay} className="btn btn-primary" disabled={busy}>
               {busy && <Spinner />}
-              {busy ? "Please wait…" : `Pay ${formatPrice(order.total)}`}
+              {busy ? t("pleaseWait") : t("pay", { amount: formatPrice(order.total) })}
             </button>
             <button
               type="button"
@@ -282,14 +286,14 @@ export default function CheckoutFlow({
               disabled={busy}
               className="text-xs uppercase tracking-[0.2em] text-chocolate/60 hover:text-gold"
             >
-              Change address
+              {t("changeAddress")}
             </button>
           </div>
         </div>
       )}
 
       <aside className="h-fit rounded-[2rem] bg-ivory p-8">
-        <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">Order Summary</h2>
+        <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">{t("orderSummary")}</h2>
         <ul className="mb-6 space-y-3 border-b border-chocolate/15 pb-6 text-sm">
           {summary.items.map((i) => (
             <li key={i.name}>
@@ -303,10 +307,10 @@ export default function CheckoutFlow({
               {"slug" in i && (
                 <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[0.65rem] tracking-[0.2em] text-chocolate/60">
                   <button type="button" onClick={() => moveToWishlist(i.slug)} className="uppercase hover:text-gold">
-                    Move to Wishlist
+                    {t("moveToWishlist")}
                   </button>
                   <button type="button" onClick={() => setQty(i.slug, 0)} className="uppercase hover:text-gold">
-                    Remove
+                    {t("remove")}
                   </button>
                 </div>
               )}
@@ -316,7 +320,7 @@ export default function CheckoutFlow({
         <OrderSummary subtotal={summary.subtotal} shipping={summary.shipping} total={summary.total} />
         {!order && (
           <Link href="/cart/" className="mt-6 block text-center text-xs uppercase tracking-[0.2em] text-chocolate/60 hover:text-gold">
-            Edit cart
+            {t("editCart")}
           </Link>
         )}
       </aside>
@@ -325,13 +329,14 @@ export default function CheckoutFlow({
 }
 
 function AddressText({ address: a, inline }: { address: Address; inline?: boolean }) {
+  const t = useTranslations("checkout.flow");
   const line = `${a.address}, ${a.city}, ${a.state} - ${a.pincode}`;
   if (inline) return <>{a.name}, {line}</>;
   return (
     <span className="leading-relaxed">
       <span className="block font-medium">{a.name}</span>
       <span className="block text-chocolate/75">{line}</span>
-      <span className="block text-chocolate/75">Phone: {a.phone}</span>
+      <span className="block text-chocolate/75">{t("phone", { phone: a.phone })}</span>
     </span>
   );
 }

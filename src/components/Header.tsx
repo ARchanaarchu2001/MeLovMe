@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,6 +11,7 @@ import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 
 export default function Header() {
+  const t = useTranslations("common");
   const pathname = usePathname();
   const { count } = useCart();
   const { count: wishCount } = useWishlist();
@@ -28,7 +30,10 @@ export default function Header() {
       cancelled = true;
     };
   }, [pathname]);
-  const links = isAdmin ? [...navLinks, { href: "/admin/", label: "Admin" }] : navLinks;
+  const links = (isAdmin ? [...navLinks, { href: "/admin/", key: "admin" } as const] : navLinks).map((l) => ({
+    href: l.href,
+    label: t(`nav.${l.key}`),
+  }));
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href.replace(/\/$/, "")));
 
@@ -73,16 +78,16 @@ export default function Header() {
 
           <div className="flex items-center gap-2 md:gap-5">
             {[
-              { href: "/wishlist/", label: "Wishlist", count: wishCount, icon: <Icon name="heart" className="h-5 w-5" /> },
-              { href: "/cart/", label: "Cart", count, icon: <CartIcon /> },
+              { href: "/wishlist/", label: t("header.wishlist"), count: wishCount, icon: <Icon name="heart" className="h-5 w-5" /> },
+              { href: "/cart/", label: t("header.cart"), count, icon: <CartIcon /> },
               // Logged-out visitors are sent on to the login page
-              { href: "/profile/", label: "My account", count: 0, icon: <UserIcon />, desktopOnly: true },
+              { href: "/profile/", label: t("header.account"), count: 0, icon: <UserIcon />, desktopOnly: true },
             ].map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                aria-label={l.count > 0 ? `${l.label}, ${l.count} item${l.count === 1 ? "" : "s"}` : l.label}
+                aria-label={l.count > 0 ? t("header.itemCount", { label: l.label, count: l.count }) : l.label}
                 className={`relative h-11 w-11 items-center justify-center rounded-full border border-chocolate/20 text-chocolate transition-colors hover:border-gold hover:text-gold ${
                   l.desktopOnly ? "hidden md:flex" : "flex"
                 }`}
@@ -97,7 +102,7 @@ export default function Header() {
             ))}
 
             <Link href="/products/" className="btn btn-primary hidden !px-6 !py-3 md:inline-flex">
-              Shop Now
+              {t("header.shopNow")}
             </Link>
 
             {/* Hamburger — morphs into an X */}
@@ -106,7 +111,7 @@ export default function Header() {
                 open ? "border-gold text-gold" : "border-chocolate/20 text-chocolate"
               }`}
               onClick={() => setOpen(!open)}
-              aria-label={open ? "Close menu" : "Open menu"}
+              aria-label={open ? t("header.closeMenu") : t("header.openMenu")}
               aria-expanded={open}
               aria-controls="mobile-menu"
             >
@@ -155,15 +160,15 @@ export default function Header() {
             style={{ transitionDelay: open ? "500ms" : "0ms" }}
           >
             <Link href="/products/" onClick={() => setOpen(false)} className="btn btn-gold w-full">
-              Shop Now
+              {t("header.shopNow")}
             </Link>
             <div className="mt-4 flex items-center justify-center gap-6 text-xs uppercase tracking-[0.25em] text-ivory/80">
               <Link href="/profile/" onClick={() => setOpen(false)} className="flex items-center gap-2 hover:text-gold">
-                <UserIcon className="h-4 w-4" /> My Account
+                <UserIcon className="h-4 w-4" /> {t("header.myAccount")}
               </Link>
               <span aria-hidden="true" className="h-3 w-px bg-ivory/30" />
               <Link href="/orders/" onClick={() => setOpen(false)} className="hover:text-gold">
-                My Orders
+                {t("header.myOrders")}
               </Link>
             </div>
 
@@ -179,7 +184,7 @@ export default function Header() {
                   href={site.social[name]}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label={name === "instagram" ? "Instagram" : "Facebook"}
+                  aria-label={t(`social.${name}`)}
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-ivory/25 hover:border-gold hover:bg-gold hover:text-espresso"
                 >
                   <SocialIcon name={name} />

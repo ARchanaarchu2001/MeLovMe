@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { TrashIcon } from "./Icons";
 import Price from "./Price";
 import { moveToCart, removeFromWishlist, useWishlist } from "@/lib/wishlist";
 
 export default function WishlistView() {
+  const t = useTranslations("cart.wishlist");
   const { ready, products } = useWishlist();
 
   // Wishlist is read from localStorage, so nothing to show until the browser has loaded it
@@ -15,8 +17,8 @@ export default function WishlistView() {
   if (products.length === 0) {
     return (
       <div className="py-16 text-center">
-        <p className="text-chocolate/70">Your wishlist is empty.</p>
-        <Link href="/products/" className="btn btn-primary mt-8">Shop Products</Link>
+        <p className="text-chocolate/70">{t("empty")}</p>
+        <Link href="/products/" className="btn btn-primary mt-8">{t("shopProducts")}</Link>
       </div>
     );
   }
@@ -43,13 +45,13 @@ export default function WishlistView() {
             </div>
             <div className="flex items-center justify-between gap-4">
               <button type="button" onClick={() => moveToCart(product.slug)} className="btn btn-primary !px-6 !py-3">
-                Move to Cart
+                {t("moveToCart")}
               </button>
               <button
                 type="button"
                 onClick={() => removeFromWishlist(product.slug)}
-                aria-label={`Remove ${product.name} from wishlist`}
-                title="Remove"
+                aria-label={t("removeLabel", { name: product.name })}
+                title={t("remove")}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-chocolate/60 transition-colors hover:bg-red-700/10 hover:text-red-700"
               >
                 <TrashIcon className="h-5 w-5" />

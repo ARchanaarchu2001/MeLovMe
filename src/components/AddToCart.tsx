@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import CartButton from "./CartButton";
 import { addToCart, useCart } from "@/lib/cart";
 
 // Product page buttons: Add to Cart (a quantity stepper once it's in the cart) and Buy Now
 export default function AddToCart({ slug }: { slug: string }) {
+  const t = useTranslations("products");
   const router = useRouter();
   const inCart = useCart().lines.some((l) => l.product.slug === slug);
 
@@ -21,7 +23,7 @@ export default function AddToCart({ slug }: { slug: string }) {
           router.push("/checkout/");
         }}
       >
-        Buy Now
+        {t("buyNow")}
       </button>
     </div>
   );

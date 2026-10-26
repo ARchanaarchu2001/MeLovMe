@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
+import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import CartView from "@/components/CartView";
 
-export const metadata: Metadata = {
-  title: "Your Cart",
-  robots: { index: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("cart.page");
+  return {
+    title: t("title"),
+    robots: { index: false },
+  };
+}
 
 export default function CartPage() {
+  const t = useTranslations("cart.page");
   return (
     <section className="mx-auto max-w-7xl px-5 py-12 md:px-8 md:py-16">
-      <p className="eyebrow">Shopping</p>
-      <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">Your Cart</h1>
+      <p className="eyebrow">{t("eyebrow")}</p>
+      <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">{t("title")}</h1>
       <CartView />
     </section>
   );

@@ -7,6 +7,7 @@ import { useRef, useState, useTransition, type FormEvent, type ReactNode } from 
 import { saveProduct, type ProductErrors, type ProductInput } from "@/app/actions/admin";
 import { formatPrice } from "@/lib/format";
 import { priceOf } from "@/lib/product";
+import Spinner from "@/components/Spinner";
 
 const input = "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold";
 const label = "mb-1.5 block text-xs uppercase tracking-[0.15em] text-chocolate/60";
@@ -268,7 +269,14 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
                 disabled={uploading > 0}
                 className="flex aspect-square w-28 flex-col items-center justify-center rounded-xl border-2 border-dashed border-chocolate/25 text-xs uppercase tracking-[0.1em] text-chocolate/60 hover:border-gold hover:text-gold disabled:opacity-60"
               >
-                {uploading > 0 ? "Uploading…" : <>+ Add<br />image</>}
+                {uploading > 0 ? (
+                  <>
+                    <Spinner className="mb-2 h-5 w-5 text-gold" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>+ Add<br />image</>
+                )}
               </button>
             )}
           </div>
@@ -335,6 +343,7 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
 
         <div className="flex flex-wrap items-center gap-4">
           <button type="submit" className="btn btn-primary" disabled={pending || uploading > 0}>
+            {pending && <Spinner />}
             {pending ? "Saving…" : isNew ? "Create product" : "Save changes"}
           </button>
           <Link href="/admin/products/" className="text-xs uppercase tracking-[0.15em] text-chocolate/60 hover:text-gold">

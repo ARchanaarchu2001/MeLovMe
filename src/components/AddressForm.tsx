@@ -3,6 +3,7 @@
 import { useState, useTransition, type FormEvent, type InputHTMLAttributes } from "react";
 import { saveAddress } from "@/app/actions/checkout";
 import { addressFields, validateAddress, type Address, type SavedAddress } from "@/lib/order";
+import Spinner from "./Spinner";
 
 export const field =
   "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-3 text-sm placeholder:text-chocolate/40 outline-none focus:border-gold";
@@ -93,6 +94,7 @@ export default function AddressForm({
       })}
       <div className="flex flex-wrap items-center gap-6 sm:col-span-2">
         <button type="submit" className="btn btn-primary" disabled={pending}>
+          {pending && <Spinner />}
           {pending ? "Saving…" : "Save Address"}
         </button>
         {onCancel && (

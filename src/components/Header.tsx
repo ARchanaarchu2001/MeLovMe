@@ -14,6 +14,21 @@ export default function Header() {
   const { count } = useCart();
   const { count: wishCount } = useWishlist();
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Admins get an extra "Admin" link. Asked from the browser (the shop pages are cached for
+  // everyone) and re-checked on each navigation, so it appears or goes away after logging in or out.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/me/")
+      .then((r) => (r.ok ? r.json() : { admin: false }))
+      .then((d: { admin?: boolean }) => !cancelled && setIsAdmin(d.admin === true))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+  const links = isAdmin ? [...navLinks, { href: "/admin/", label: "Admin" }] : navLinks;
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href.replace(/\/$/, "")));
 
@@ -42,7 +57,7 @@ export default function Header() {
           </Link>
 
           <nav className="hidden items-center gap-10 md:flex">
-            {navLinks.map((l) => (
+            {links.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
@@ -114,7 +129,7 @@ export default function Header() {
 
         <nav className="relative px-6 pt-10">
           <ul className="space-y-1">
-            {navLinks.map((l, i) => (
+            {links.map((l, i) => (
               <li
                 key={l.href}
                 className={`transition-all duration-500 ${open ? "translate-x-0 opacity-100" : "-translate-x-6 opacity-0"}`}

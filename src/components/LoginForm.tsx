@@ -7,6 +7,7 @@ import { devSendOtp, login } from "@/app/actions/auth";
 import { firebaseEnabled } from "@/lib/firebase-config";
 import { field } from "./AddressForm";
 import OtpInput from "./OtpInput";
+import Spinner from "./Spinner";
 
 // Friendly messages for the Firebase errors customers can actually hit
 const firebaseErrors: Record<string, string> = {
@@ -129,6 +130,7 @@ export default function LoginForm({ next }: { next: string }) {
           </div>
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
           <button type="submit" className="btn btn-primary w-full" disabled={pending || !/^[6-9]\d{9}$/.test(phone)}>
+            {pending && <Spinner />}
             {pending ? "Sending OTP…" : "Send OTP"}
           </button>
         </form>
@@ -147,6 +149,7 @@ export default function LoginForm({ next }: { next: string }) {
           />
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
           <button type="submit" className="btn btn-primary w-full" disabled={pending || code.length !== 6}>
+            {pending && <Spinner />}
             {pending ? "Verifying…" : "Verify & Login"}
           </button>
           <div className="flex justify-between text-xs uppercase tracking-[0.2em] text-chocolate/60">
@@ -175,6 +178,7 @@ export default function LoginForm({ next }: { next: string }) {
           />
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
           <button type="submit" className="btn btn-primary w-full" disabled={pending || name.trim().length < 2}>
+            {pending && <Spinner />}
             {pending ? "Creating account…" : "Create Account"}
           </button>
         </form>

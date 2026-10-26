@@ -172,4 +172,6 @@ body {
     transition: none !important;
   }
   .reveal { opacity: 1; transform: none; }
+  /* Loading spinners still turn (slowly) — a frozen one looks like the page has hung */
+  .animate-spin { animation: spin 1.5s linear infinite !important; }
 }

@@ -49,8 +49,8 @@ every payment is also listed in the Razorpay Dashboard → Transactions.
 Admin access is a `superAdmin` true/false field on each user in MongoDB (`users` collection). New users get
 `false`. To make someone an admin, have them sign up once, then in MongoDB Atlas → Browse Collections → `users`, find
 them by `phone`, and set `superAdmin` to `true` (set it back to `false` to remove access). Admins land on the admin
-**dashboard** (`/admin/`) after logging in (or on checkout, if they were checking out), and the header's account icon
-takes them there too. The admin area has its own sidebar layout (Dashboard, Orders, Customers, Products, View shop,
+**dashboard** (`/admin/`) after logging in (or on checkout, if they were checking out). The shop navbar shows an
+**Admin** link to admins only; their profile page works as for everyone else. The admin area has its own sidebar layout (Dashboard, Orders, Customers, Products, View shop,
 Log out) instead of the shop header and footer. Anyone else gets "page not found". Admin → Customers → **Admins**
 lists the admins.
 

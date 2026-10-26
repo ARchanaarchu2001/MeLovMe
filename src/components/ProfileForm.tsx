@@ -4,6 +4,7 @@ import { useRef, useState, useTransition, type FormEvent } from "react";
 import { updateProfile } from "@/app/actions/auth";
 import { field } from "./AddressForm";
 import { PencilIcon } from "./Icons";
+import Spinner from "./Spinner";
 
 const label = "mb-2 block text-xs uppercase tracking-[0.2em] text-chocolate/60";
 const readOnlyField = `${field} bg-transparent text-chocolate/70`;
@@ -81,6 +82,7 @@ export default function ProfileForm({ name: initialName, phone }: { name: string
           {editing && (
             <>
               <button type="submit" className="btn btn-primary" disabled={pending || name.trim() === saved}>
+                {pending && <Spinner />}
                 {pending ? "Saving…" : "Save"}
               </button>
               <button

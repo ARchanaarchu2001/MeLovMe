@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { logout } from "@/app/actions/auth";
 import Logo from "@/components/Logo";
+import PendingButton from "@/components/PendingButton";
 
 const icon = (d: string) => (
   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -72,10 +73,10 @@ export default function AdminShell({ name, children }: { name: string; children:
           View shop
         </Link>
         <form action={logout}>
-          <button type="submit" className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-ivory/75 hover:bg-ivory/5 hover:text-ivory">
+          <PendingButton className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-ivory/75 hover:bg-ivory/5 hover:text-ivory disabled:opacity-60">
             {icon("M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10")}
             Log out
-          </button>
+          </PendingButton>
         </form>
       </div>
     </div>

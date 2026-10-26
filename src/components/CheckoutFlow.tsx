@@ -12,6 +12,7 @@ import { clearCart, setQty, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
 import type { Address, Order, SavedAddress } from "@/lib/order";
+import Spinner from "./Spinner";
 
 // The parts of Razorpay Checkout (https://checkout.razorpay.com/v1/checkout.js) we use
 type RazorpaySuccess = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
@@ -247,6 +248,7 @@ export default function CheckoutFlow({
               {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
               <div className="mt-8">
                 <button type="button" onClick={handlePay} className="btn btn-primary" disabled={busy || !selectedId}>
+                  {busy && <Spinner />}
                   {busy ? "Please wait…" : `Pay ${formatPrice(cart.total)}`}
                 </button>
                 <p className="mt-3 text-xs text-chocolate/60">UPI (Google Pay, PhonePe, Paytm), cards and netbanking</p>
@@ -268,6 +270,7 @@ export default function CheckoutFlow({
           {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
           <div className="mt-8 flex flex-wrap items-center gap-6">
             <button type="button" onClick={handlePay} className="btn btn-primary" disabled={busy}>
+              {busy && <Spinner />}
               {busy ? "Please wait…" : `Pay ${formatPrice(order.total)}`}
             </button>
             <button

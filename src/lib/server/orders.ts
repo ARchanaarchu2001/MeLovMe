@@ -2,6 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import { site } from "@/data/site";
 import { getDb } from "./db";
+import { adjustStock } from "./products";
 import { fetchPaymentDetails } from "./razorpay";
 
 // Marks the order for this Razorpay order as paid. Called both from checkout (after the
@@ -11,10 +12,12 @@ export async function markOrderPaid(razorpayOrderId: string, paymentId: string) 
   const { orders } = await getDb();
   const order = await orders.findOneAndUpdate(
     { razorpayOrderId, status: "awaiting_payment" },
-    { $set: { status: "paid", paymentId, paidAt: new Date(), fulfillment: "placed" } },
+    { $set: { status: "paid", paymentId, paidAt: new Date(), fulfillment: "placed", stockTaken: true } },
     { returnDocument: "after" },
   );
   if (!order) return;
+  // Once per order, since only the first call gets here
+  await adjustStock(order.items, -1).catch((err) => console.error("Updating stock failed", order._id, err));
 
   // After the response, so the customer isn't kept waiting. `after` keeps serverless hosts
   // (Vercel) running until it finishes. The order is already paid, so failures are only logged.

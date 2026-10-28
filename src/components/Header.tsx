@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
 import { CartIcon, Icon, LeafArt, SocialIcon, UserIcon } from "./Icons";
-import { navLinks, site } from "@/data/site";
+import { navLinks, site, whatsappUrl } from "@/data/site";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 
@@ -174,7 +174,14 @@ export default function Header() {
 
             <div className="mt-10 space-y-2 text-sm text-ivory/70">
               <a href={`mailto:${site.email}`} className="block hover:text-gold">{site.email}</a>
-              <a href={`tel:${site.phone.replace(/\s/g, "")}`} className="block hover:text-gold">{site.phone}</a>
+              <a
+                href={whatsappUrl(t("whatsappMessage"))}
+                target="_blank"
+                rel="noreferrer"
+                className="block hover:text-gold"
+              >
+                {site.phone}
+              </a>
             </div>
 
             <div className="mt-6 flex gap-3 pb-10">

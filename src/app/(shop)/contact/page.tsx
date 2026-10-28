@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import ContactForm from "@/components/ContactForm";
 import Reveal from "@/components/Reveal";
-import { site } from "@/data/site";
+import { site, whatsappUrl } from "@/data/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("contact.meta");
@@ -11,9 +11,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ContactPage() {
   const t = await getTranslations("contact");
+  const tc = await getTranslations("common");
   const details = [
     { label: t("details.email"), value: site.email, href: `mailto:${site.email}` },
-    { label: t("details.phone"), value: site.phone, href: `tel:${site.phone.replace(/\s/g, "")}` },
+    { label: t("details.phone"), value: site.phone, href: whatsappUrl(tc("whatsappMessage")), external: true },
     { label: t("details.studio"), value: t("details.studioValue") },
     { label: t("details.hours"), value: t("details.hoursValue") },
   ];
@@ -44,7 +45,13 @@ export default async function ContactPage() {
                 <dt className="eyebrow">{d.label}</dt>
                 <dd className="mt-2 leading-relaxed">
                   {d.href ? (
-                    <a href={d.href} className="hover:text-gold">{d.value}</a>
+                    <a
+                      href={d.href}
+                      {...(d.external && { target: "_blank", rel: "noreferrer" })}
+                      className="hover:text-gold"
+                    >
+                      {d.value}
+                    </a>
                   ) : (
                     d.value
                   )}

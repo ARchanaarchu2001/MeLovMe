@@ -3,7 +3,7 @@
 import { ObjectId } from "mongodb";
 import { getTranslations } from "next-intl/server";
 import { addressFields, MAX_QTY, shippingFor, validateAddress, type Address, type CartItem, type Order, type SavedAddress } from "@/lib/order";
-import { priceOf } from "@/lib/product";
+import { lineTotal, priceOf } from "@/lib/product";
 import { getDb, type OrderDoc } from "@/lib/server/db";
 import { markOrderPaid } from "@/lib/server/orders";
 import { getCatalog } from "@/lib/server/products";
@@ -70,13 +70,34 @@ export async function createOrder(addressId: string, cart: CartItem[]): Promise<
 
   // Only enabled products, at today's price (the offer price while an offer runs)
   const catalog = await getCatalog();
+  // Stock may have run out since the cart was loaded: stop rather than charge for less than they saw
+  if ((Array.isArray(cart) ? cart : []).some((i) => catalog.find((p) => p.slug === i?.slug)?.inStock === false)) {
+    return { error: t("outOfStock") };
+  }
+  // Nor sell more than there are
+  const short = (Array.isArray(cart) ? cart : []).flatMap((i) => {
+    const product = catalog.find((p) => p.slug === i?.slug);
+    return product && product.stock !== null && Number(i?.qty) > product.stock ? [product] : [];
+  });
+  if (short.length) return { error: t("notEnoughStock", { name: short[0].name, count: short[0].stock ?? 0 }) };
   const items = (Array.isArray(cart) ? cart : []).flatMap((i) => {
     const product = catalog.find((p) => p.slug === i?.slug);
     const qty = Math.min(Number(i?.qty), MAX_QTY);
     if (!product || !Number.isInteger(qty) || qty < 1) return [];
     const { price } = priceOf(product);
+    // Combo offers apply by quantity, worked out here again (never trusted from the browser)
+    const { total, saving } = lineTotal(product, qty);
     return [
-      { slug: product.slug, name: product.name, size: product.size, qty, price, total: price * qty, image: product.images[0] },
+      {
+        slug: product.slug,
+        name: product.name,
+        size: product.size,
+        qty,
+        price,
+        total,
+        ...(saving > 0 && { comboSaving: saving }),
+        image: product.images[0],
+      },
     ];
   });
   if (!items.length) return { error: t("cartEmpty") };

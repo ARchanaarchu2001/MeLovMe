@@ -24,7 +24,9 @@ export default async function NewProductPage() {
           ingredients: [],
           howToUse: "",
           enabled: true,
+          stock: null,
           offer: null,
+          combos: [],
         }}
       />
     </div>

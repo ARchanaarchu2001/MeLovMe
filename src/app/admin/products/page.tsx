@@ -4,7 +4,8 @@ import Link from "next/link";
 import Price from "@/components/Price";
 import ProductToggle from "@/components/admin/ProductToggle";
 import { formatDate } from "@/components/admin/ui";
-import { offerStatus } from "@/lib/product";
+import StockEditor from "@/components/admin/StockEditor";
+import { LOW_STOCK, offerStatus } from "@/lib/product";
 import { getDb } from "@/lib/server/db";
 import { toProduct } from "@/lib/server/products";
 import { requireAdmin } from "@/lib/server/session";
@@ -15,12 +16,17 @@ export const metadata: Metadata = { title: "Products" };
 export default async function AdminProductsPage() {
   await requireAdmin("/admin/products/");
   const docs = await (await getDb()).products.find().sort({ createdAt: 1 }).toArray();
+  const all = docs.map(toProduct);
+  const outOfStock = all.filter((p) => !p.inStock).length;
+  const lowStock = all.filter((p) => p.stock !== null && p.stock > 0 && p.stock <= LOW_STOCK).length;
 
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-chocolate/70">
           {docs.length} product{docs.length === 1 ? "" : "s"} · {docs.filter((d) => d.enabled).length} shown in the shop
+          {outOfStock > 0 && <> · <span className="text-red-800">{outOfStock} out of stock</span></>}
+          {lowStock > 0 && <> · <span className="text-amber-900">{lowStock} low on stock</span></>}
         </p>
         <Link href="/admin/products/new/" className="btn btn-primary !px-6 !py-3">+ Add product</Link>
       </div>
@@ -52,7 +58,10 @@ export default async function AdminProductsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-5">
-                <ProductToggle slug={p.slug} name={p.name} enabled={p.enabled} />
+                <div className="grid gap-2">
+                  <ProductToggle slug={p.slug} name={p.name} flag="enabled" value={p.enabled} />
+                </div>
+                <StockEditor slug={p.slug} name={p.name} stock={p.stock} />
                 <Link href={`/admin/products/${p.slug}/`} className="text-xs uppercase tracking-[0.15em] text-gold hover:underline">
                   Edit
                 </Link>

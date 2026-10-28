@@ -8,8 +8,12 @@ import ProductCard from "@/components/ProductCard";
 import Reveal from "@/components/Reveal";
 import WishlistButton from "@/components/WishlistButton";
 import { Icon } from "@/components/Icons";
+import OfferSticker, { OfferCountdown } from "@/components/OfferSticker";
 import Price from "@/components/Price";
+import ProductReviews from "@/components/ProductReviews";
+import Stars from "@/components/Stars";
 import { getCatalog, getCatalogProduct } from "@/lib/server/products";
+import { getProductReviews } from "@/lib/server/reviews";
 
 // Pages for current products are built ahead; products added later render on first visit
 export async function generateStaticParams() {
@@ -28,6 +32,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
   // Unknown and disabled products both 404
   if (!product) notFound();
   const t = await getTranslations("products.detail");
+  const tr = await getTranslations("products.reviews");
+  const { summary, reviews } = await getProductReviews(product.slug);
 
   const others = (await getCatalog()).filter((p) => p.slug !== product.slug);
 
@@ -44,16 +50,28 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
           <div className="relative animate-zoom-in">
             <ProductGallery images={product.images} name={product.name} />
             <WishlistButton slug={product.slug} className="absolute right-5 top-5 z-10" />
+            <div className="pointer-events-none absolute left-5 top-5 z-10">
+              <OfferSticker product={product} large />
+            </div>
           </div>
 
           <div className="animate-fade-up md:py-6" style={{ animationDelay: "200ms" }}>
             <p className="eyebrow">{product.category}</p>
             <h1 className="mt-4 text-4xl font-light md:text-5xl">{product.name}</h1>
+            {summary.count > 0 && (
+              <a href="#reviews" className="mt-3 inline-flex items-center gap-2 text-sm text-chocolate/70 hover:text-gold">
+                <Stars rating={summary.average} label={tr("outOf5", { rating: summary.average })} />
+                <span>
+                  {summary.average.toFixed(1)} · {tr("count", { count: summary.count })}
+                </span>
+              </a>
+            )}
             <div className="mt-4 flex items-center gap-4">
               <Price product={product} className="text-2xl" />
               <span className="h-4 w-px bg-chocolate/20" />
               <span className="text-sm text-chocolate/60">{product.size}</span>
             </div>
+            <OfferCountdown product={product} />
             <p className="mt-8 leading-relaxed text-chocolate/80">{product.description}</p>
 
             <ul className="mt-8 space-y-3">
@@ -65,7 +83,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               ))}
             </ul>
 
-            <AddToCart slug={product.slug} />
+            <AddToCart slug={product.slug} inStock={product.inStock} stock={product.stock} />
 
             <div className="mt-12 divide-y divide-chocolate/10 border-y border-chocolate/10">
               <details className="group py-5" open>
@@ -88,6 +106,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
           </div>
         </div>
       </section>
+
+      <ProductReviews slug={product.slug} summary={summary} reviews={reviews} />
 
       {others.length > 0 && (
         <section className="bg-ivory">

@@ -114,6 +114,18 @@ body {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+
+/* The announcement bar's scrolling messages (see AnnouncementBar.tsx) */
+.announcement-track { animation: marquee linear infinite; }
+.announcement:hover .announcement-track,
+.announcement:focus-within .announcement-track { animation-play-state: paused; }
 
 /* Page-load entrance; stagger with style={{ animationDelay }} */
 .animate-fade-up { animation: fade-up 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
@@ -121,6 +133,7 @@ body {
 .animate-float { animation: float 5s ease-in-out infinite; }
 .animate-sway { animation: sway 8s ease-in-out infinite; transform-origin: bottom left; }
 .animate-page-in { animation: page-in 0.6s ease both; }
+.animate-toast-in { animation: toast-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 /* Gold text with a slow metallic sheen */
 .text-shimmer {
@@ -172,6 +185,11 @@ body {
     transition: none !important;
   }
   .reveal { opacity: 1; transform: none; }
+  /* A still announcement bar: just the first message, centred */
+  .announcement-track { width: auto; justify-content: center; }
+  .announcement-track > * { max-width: 100%; }
+  .announcement-track > * > *:not(:first-child),
+  .announcement-track > [aria-hidden] { display: none; }
   /* Loading spinners still turn (slowly) — a frozen one looks like the page has hung */
   .animate-spin { animation: spin 1.5s linear infinite !important; }
 }

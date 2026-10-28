@@ -44,9 +44,15 @@ export default function WishlistView() {
               <Price product={product} className="justify-end" />
             </div>
             <div className="flex items-center justify-between gap-4">
-              <button type="button" onClick={() => moveToCart(product.slug)} className="btn btn-primary !px-6 !py-3">
-                {t("moveToCart")}
-              </button>
+              {product.inStock ? (
+                <button type="button" onClick={() => moveToCart(product.slug)} className="btn btn-primary !px-6 !py-3">
+                  {t("moveToCart")}
+                </button>
+              ) : (
+                <button type="button" disabled className="btn btn-outline cursor-not-allowed !px-6 !py-3 opacity-50">
+                  {t("outOfStock")}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => removeFromWishlist(product.slug)}

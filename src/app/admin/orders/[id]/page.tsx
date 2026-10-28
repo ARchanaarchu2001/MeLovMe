@@ -42,6 +42,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                 <li key={i.slug} className="flex justify-between gap-4">
                   <span>
                     {i.name} <span className="text-chocolate/60">({i.size}) × {i.qty} @ {formatPrice(i.price)}</span>
+                    {!!i.comboSaving && <span className="block text-xs text-green-800">Combo offer: −{formatPrice(i.comboSaving)}</span>}
                   </span>
                   <span>{formatPrice(i.total)}</span>
                 </li>

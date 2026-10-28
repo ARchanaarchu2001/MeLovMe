@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Filter } from "mongodb";
-import { AdminBadge, SearchBox, daysAgo, formatDate, searchRegex } from "@/components/admin/ui";
+import { AdminBadge, Pagination, SearchBox, daysAgo, formatDate, searchRegex } from "@/components/admin/ui";
 import { formatPrice } from "@/lib/format";
 import { getDb, type UserDoc } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Customers" };
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 // Everyone who has an account, newest first, with what they've bought. "Admins" lists users with superAdmin: true.
 export default async function AdminCustomersPage({ searchParams }: PageProps<"/admin/customers">) {
   await requireAdmin("/admin/customers/");
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 100) : "";
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = Math.max(1, Math.floor(Number(sp.page)) || 1);
   const admins = sp.view === "admins";
 
   const filter: Filter<UserDoc> = {
@@ -40,7 +40,6 @@ export default async function AdminCustomersPage({ searchParams }: PageProps<"/a
         .toArray()
     ).map((s) => [s._id.toHexString(), s]),
   );
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const href = (p: number) =>
     `/admin/customers/?${new URLSearchParams({ ...(q && { q }), ...(admins && { view: "admins" }), page: String(p) })}`;
 
@@ -119,13 +118,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps<"/a
         </div>
       )}
 
-      {pages > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-6 text-xs uppercase tracking-[0.15em]">
-          {page > 1 && <Link href={href(page - 1)} className="hover:text-gold">← Newer</Link>}
-          <span className="text-chocolate/60">Page {page} of {pages}</span>
-          {page < pages && <Link href={href(page + 1)} className="hover:text-gold">Older →</Link>}
-        </div>
-      )}
+      <Pagination page={page} pageSize={PAGE_SIZE} total={total} href={href} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { MongoClient, type Db, type ObjectId } from "mongodb";
 import { seedProducts } from "@/data/seed-products";
+import type { Announcement } from "@/lib/announcement";
 import type { Address, Fulfillment } from "@/lib/order";
 import type { Product } from "@/lib/product";
 import type { PaymentDetails } from "./razorpay";
@@ -26,7 +27,8 @@ export type OrderDoc = {
   userId: ObjectId;
   address: Address;
   // `price` is what the customer paid per item (the offer price during an offer)
-  items: { slug: string; name: string; size: string; qty: number; price: number; total: number; image?: string }[];
+  // `comboSaving`: what combo offers took off `price` × `qty` (total = price × qty − comboSaving)
+  items: { slug: string; name: string; size: string; qty: number; price: number; total: number; comboSaving?: number; image?: string }[];
   subtotal: number;
   shipping: number;
   total: number;
@@ -40,11 +42,40 @@ export type OrderDoc = {
   courier?: string;
   trackingNumber?: string;
   adminNote?: string; // only visible to the shop
+  stockTaken?: boolean; // its items were taken out of stock when paid (orders from before stock counts weren't)
   createdAt: Date;
   updatedAt?: Date;
 };
 
-export type ProductDoc = Omit<Product, "slug"> & { _id: string; createdAt: Date; updatedAt: Date };
+export type ProductDoc = Omit<Product, "slug" | "inStock" | "stock" | "combos"> & {
+  _id: string;
+  combos?: Product["combos"]; // missing on products saved before combos existed
+  stock?: number; // missing on products saved before stock counts existed
+  inStock?: boolean; // kept in step with stock > 0
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ReviewDoc = {
+  _id: ObjectId;
+  productSlug: string;
+  // Who added it: "customer" = written by a logged-in customer on the product page,
+  // "admin" = added by the shop in /admin/reviews (e.g. feedback received on WhatsApp)
+  source: "customer" | "admin";
+  userId?: ObjectId; // the customer who wrote it (customer reviews only; one per customer per product)
+  addedBy?: ObjectId; // the admin who added it (admin reviews only)
+  name: string; // shown publicly
+  rating: number; // 1–5
+  title: string;
+  text: string;
+  verified: boolean; // the customer had a paid order with this product when they wrote it
+  hidden: boolean; // hidden from the shop by an admin
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// Shop-wide settings edited in the admin area, one document each
+export type SettingsDoc = { _id: "announcement" } & Announcement & { updatedAt: Date };
 
 
 // Reuse one client across hot reloads in dev and across requests in prod
@@ -69,6 +100,13 @@ async function connect() {
     db.collection("orders").createIndex({ razorpayOrderId: 1 }),
     db.collection("orders").createIndex({ status: 1, createdAt: -1 }),
     db.collection("products").createIndex({ enabled: 1, createdAt: 1 }),
+    db.collection("reviews").createIndex({ productSlug: 1, hidden: 1, createdAt: -1 }),
+    db.collection("reviews").createIndex({ createdAt: -1 }),
+    // One review per customer per product (admin reviews have no userId)
+    db.collection("reviews").createIndex(
+      { productSlug: 1, userId: 1 },
+      { unique: true, partialFilterExpression: { userId: { $exists: true } } },
+    ),
   ]);
 
   // First run: copy the starting catalogue in. Spread createdAt so the shop keeps their order.
@@ -81,6 +119,7 @@ async function connect() {
           ...p,
           _id: slug,
           enabled: true,
+          inStock: true,
           offer: null,
           createdAt: new Date(start + i),
           updatedAt: new Date(start + i),
@@ -104,5 +143,7 @@ export async function getDb() {
     otps: db.collection<OtpDoc>("otps"),
     orders: db.collection<OrderDoc>("orders"),
     products: db.collection<ProductDoc>("products"),
+    settings: db.collection<SettingsDoc>("settings"),
+    reviews: db.collection<ReviewDoc>("reviews"),
   };
 }

@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import Logo from "./Logo";
 import { SocialIcon } from "./Icons";
-import { navLinks, site } from "@/data/site";
+import { navLinks, site, whatsappUrl } from "@/data/site";
 import type { Product } from "@/lib/product";
 
 export default function Footer({ products }: { products: Product[] }) {
@@ -52,7 +52,7 @@ export default function Footer({ products }: { products: Product[] }) {
               </a>
             </li>
             <li>
-              <a href={`tel:${site.phone.replace(/\s/g, "")}`} className="hover:text-gold">
+              <a href={whatsappUrl(t("whatsappMessage"))} target="_blank" rel="noreferrer" className="hover:text-gold">
                 {site.phone}
               </a>
             </li>

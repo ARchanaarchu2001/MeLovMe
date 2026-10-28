@@ -1,5 +1,6 @@
 {
   "common": {
+    "whatsappMessage": "Hi MELOVME! I'd like to know more about your products.",
     "site": {
       "name": "MELOVME",
       "tagline": "Your Signature",
@@ -173,7 +174,7 @@
       "email": "Email",
       "phone": "Phone",
       "studio": "Studio",
-      "studioValue": "No. 12, Rose Garden Street, Chennai, Tamil Nadu 600001",
+      "studioValue": "Door No. 2/1149/I140, 3rd Floor, HiLite Business Park, Phase T2, HiLite City, Calicut, 673014",
       "hours": "Hours",
       "hoursValue": "Mon – Sat, 10:00 AM – 7:00 PM"
     },
@@ -182,6 +183,15 @@
       "name": "Your name",
       "email": "Email address",
       "phone": "Phone (optional)",
+      "errors": {
+        "required": "This field is required.",
+        "nameShort": "Please enter your full name.",
+        "nameInvalid": "Name can only contain letters, spaces, dots, hyphens and apostrophes.",
+        "invalidEmail": "Enter a valid email address, like name@example.com.",
+        "invalidPhone": "Enter a valid 10-digit mobile number.",
+        "messageShort": "Please write at least {min} characters.",
+        "tooLong": "Please keep this under {max} characters."
+      },
       "topics": {
         "general": "General enquiry",
         "product": "Product question",
@@ -190,7 +200,10 @@
       },
       "message": "How can we help?",
       "submit": "Send Message",
-      "sent": "Your email app should open now — thank you!",
+      "sending": "Sending…",
+      "sent": "Thank you! Your message has been sent — we will get back to you soon.",
+      "opened": "Your email app should open now — thank you!",
+      "failed": "Sorry, we couldn't send your message. Please try again, or email us at {email}.",
       "emailBody": "{message}\n\nName: {name}\nEmail: {email}\nPhone: {phone}"
     }
   },
@@ -212,24 +225,95 @@
       "youMayAlsoLove": "You may also love"
     },
     "card": {
-      "viewDetails": "View Details"
+      "viewDetails": "View Details",
+      "outOfStock": "Out of Stock"
     },
     "gallery": {
       "showImage": "Show image {number}"
     },
     "addToCart": "Add to Cart",
     "buyNow": "Buy Now",
+    "goToCart": "Go to Cart",
+    "combo": {
+      "title": "Combo offers",
+      "pieces": "{count, plural, one {# Piece} other {# Pieces}}",
+      "standard": "Standard price",
+      "save": "Save {amount}",
+      "youSave": "You save {percent}%",
+      "tags": {
+        "popular": "Most popular",
+        "best": "Best value"
+      },
+      "updateCart": "Update cart to {count}",
+      "inCart": "{count, plural, one {# piece} other {# pieces}} in your cart. Combo prices apply automatically in the cart.",
+      "cardLabel": "Combo offers available"
+    },
+    "toast": {
+      "added": "Added to cart",
+      "viewCart": "View Cart",
+      "close": "Close"
+    },
+    "outOfStock": "Out of Stock",
+    "outOfStockText": "This product is currently out of stock. Save it to your wishlist and check back soon.",
+    "inStock": "In stock",
+    "onlyLeft": "Only {count} left — order soon",
     "wishlist": {
       "add": "Add to wishlist",
       "remove": "Remove from wishlist"
     },
     "price": {
       "regular": "Regular price {price}",
-      "off": "{percent}% off"
+      "off": "{percent}% off",
+      "save": "Save {amount}"
+    },
+    "offer": {
+      "stickerPercent": "{value}% off",
+      "stickerFlat": "{amount} off",
+      "limited": "Limited-time offer",
+      "endsToday": "Offer ends today",
+      "endsTomorrow": "Offer ends tomorrow",
+      "endsIn": "Offer ends in {days} days",
+      "validTill": "Valid till {date}",
+      "lastDay": "Last day",
+      "daysLeft": "{days, plural, one {# day left} other {# days left}}"
     },
     "qty": {
       "decrease": "Decrease quantity",
       "increase": "Increase quantity"
+    },
+    "reviews": {
+      "eyebrow": "Kind Words",
+      "title": "Customer Reviews",
+      "count": "{count, plural, one {# review} other {# reviews}}",
+      "outOf5": "{rating} out of 5 stars",
+      "starRow": "{stars} stars: {count}",
+      "empty": "No reviews yet. Be the first to share how it feels.",
+      "verified": "Verified buyer",
+      "write": "Write a Review",
+      "edit": "Edit Your Review",
+      "loginToWrite": "Log in to write a review",
+      "form": {
+        "rating": "Your rating",
+        "star": "{count, plural, one {# star} other {# stars}}",
+        "name": "Name shown with your review",
+        "title": "Title (optional)",
+        "titlePlaceholder": "e.g. My new everyday favourite",
+        "text": "Your review",
+        "textPlaceholder": "How does it feel, smell and work for you?",
+        "submit": "Post Review",
+        "update": "Update Review",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "thanks": "Thank you! Your review is posted.",
+        "updated": "Your review is updated."
+      },
+      "errors": {
+        "login": "Please log in to write a review.",
+        "rating": "Please choose a star rating.",
+        "name": "Please enter your name.",
+        "text": "Please write a few words about the product.",
+        "generic": "Something went wrong. Please try again."
+      }
     }
   },
   "cart": {
@@ -243,7 +327,11 @@
     "remove": "Remove",
     "orderSummary": "Order Summary",
     "checkout": "Checkout",
+    "limitedOffer": "Limited Offer",
     "securePayment": "Secure payment by UPI, cards & netbanking",
+    "outOfStock": "Out of stock",
+    "outOfStockNote": "Out-of-stock items aren't included in your order.",
+    "comboSaving": "Combo offer: you save {amount}",
     "removeDialog": {
       "close": "Close",
       "title": "Remove item?",
@@ -263,6 +351,7 @@
       "empty": "Your wishlist is empty.",
       "shopProducts": "Shop Products",
       "moveToCart": "Move to Cart",
+      "outOfStock": "Out of Stock",
       "removeLabel": "Remove {name} from wishlist",
       "remove": "Remove"
     }
@@ -290,6 +379,7 @@
       "addAddress": "+ Add a new address",
       "pleaseWait": "Please wait…",
       "pay": "Pay {amount}",
+      "securedBy": "Secured by",
       "paymentMethods": "UPI (Google Pay, PhonePe, Paytm), cards and netbanking",
       "payment": "2. Payment",
       "completePayment": "Complete your payment of <strong>{amount}</strong> for order <strong>{id}</strong>. Pay with any UPI app — Google Pay, PhonePe, Paytm — or a card or netbanking.",
@@ -325,6 +415,8 @@
       "tooManyAddresses": "You can save up to {max} addresses.",
       "chooseAddress": "Please choose a delivery address.",
       "cartEmpty": "Your cart is empty.",
+      "outOfStock": "Some items in your cart just went out of stock. Please review your cart and try again.",
+      "notEnoughStock": "Sorry, only {count} of {name} left. Please lower the quantity in your cart and try again.",
       "paymentStartFailed": "We couldn't start the payment right now. Please try again shortly.",
       "orderNotFound": "We couldn't find this order.",
       "paymentNotConfirmed": "We couldn't confirm your payment. If money was deducted, please contact us with order ID {id}."

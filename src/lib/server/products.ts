@@ -17,7 +17,11 @@ export const toProduct = (d: ProductDoc): Product => ({
   ingredients: d.ingredients,
   howToUse: d.howToUse,
   enabled: d.enabled,
+  stock: typeof d.stock === "number" ? d.stock : null,
+  // Without a stock count, the old switch decides (and products from before that are in stock)
+  inStock: typeof d.stock === "number" ? d.stock > 0 : d.inStock !== false,
   offer: d.offer ?? null,
+  combos: d.combos ?? [],
 });
 
 // The products the shop shows (enabled only), in the order they were added. Cached across
@@ -38,4 +42,19 @@ export async function getCatalogProduct(slug: string) {
 export function refreshCatalog() {
   // expire: 0 — the next visitor gets fresh data, not the old catalogue
   revalidateTag("products", { expire: 0 });
+}
+
+// Takes ordered items out of stock (`direction` -1, when an order is paid) or puts them back
+// (+1, when it's cancelled). Products without a stock count are left alone; stock never goes below 0.
+export async function adjustStock(items: { slug: string; qty: number }[], direction: 1 | -1) {
+  const { products } = await getDb();
+  await Promise.all(
+    items.map((i) => {
+      const stock = { $max: [0, { $add: ["$stock", direction * i.qty] }] };
+      return products.updateOne({ _id: i.slug, stock: { $gte: 0 } }, [
+        { $set: { stock, inStock: { $gt: [stock, 0] }, updatedAt: "$$NOW" } },
+      ]);
+    }),
+  );
+  refreshCatalog();
 }

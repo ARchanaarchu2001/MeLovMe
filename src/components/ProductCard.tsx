@@ -2,12 +2,14 @@ import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import CartButton from "./CartButton";
+import { OfferBadge, OfferTimer } from "./OfferSticker";
 import Price from "./Price";
 import WishlistButton from "./WishlistButton";
-import type { Product } from "@/lib/product";
+import { activeCombos, type Product } from "@/lib/product";
 
 export default function ProductCard({ product }: { product: Product }) {
   const t = useTranslations("products.card");
+  const tc = useTranslations("products.combo");
   const href = `/products/${product.slug}/`;
 
   return (
@@ -23,17 +25,28 @@ export default function ProductCard({ product }: { product: Product }) {
             sizes="(min-width: 768px) 45vw, 100vw"
             className="object-cover transition-transform duration-700 group-hover:scale-105"
           />
-          <span className="absolute left-5 top-5 rounded-full bg-cream/90 px-4 py-1.5 text-[0.65rem] uppercase tracking-[0.2em]">
-            {product.category}
-          </span>
-        </div>
-        <div className="mt-6 flex items-start justify-between gap-4">
-          <div>
-            <h3 className="text-xl font-medium group-hover:text-gold">{product.name}</h3>
-            <p className="mt-1 text-sm text-chocolate/60">{product.size}</p>
+          <div className="absolute left-5 top-5">
+            <OfferBadge product={product} />
           </div>
-          <Price product={product} className="justify-end text-lg" />
+          {product.inStock ? (
+            <OfferTimer product={product} className="absolute inset-x-4 bottom-4" />
+          ) : (
+            <span className="absolute inset-x-4 bottom-4 rounded-full bg-chocolate/85 py-2.5 text-center text-[0.65rem] uppercase leading-none tracking-[0.2em] text-ivory">
+              {t("outOfStock")}
+            </span>
+          )}
         </div>
+        <p className="mt-5 text-[0.65rem] uppercase tracking-[0.2em] text-chocolate/60">{product.category}</p>
+        <h3 className="mt-1.5 text-xl font-medium group-hover:text-gold">
+          {product.name} <span className="text-base font-normal text-chocolate/60">· {product.size}</span>
+        </h3>
+        <Price product={product} savings className="mt-2 text-lg" />
+        {activeCombos(product).length > 0 && (
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.15em] text-chocolate">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold" aria-hidden="true" />
+            {tc("cardLabel")}
+          </p>
+        )}
         <p className="mt-3 text-sm leading-relaxed text-chocolate/75">{product.shortDescription}</p>
       </Link>
       <div className="mt-6 flex items-center justify-between gap-4">

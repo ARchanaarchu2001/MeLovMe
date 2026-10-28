@@ -3,9 +3,9 @@
 export const site = {
   name: "MELOVME",
   email: "hello@melovme.com",
-  phone: "+91 98765 43210",
+  phone: "+91 99466 58691",
   social: {
-    instagram: "https://instagram.com/",
+    instagram: "https://www.instagram.com/melovme.in/",
     facebook: "https://facebook.com/",
   },
   shipping: {
@@ -17,6 +17,11 @@ export const site = {
   // Orders are always saved in MongoDB (`orders` collection) either way.
   orderEndpoint: "",
 };
+
+// Opens a WhatsApp chat with the shop's number (site.phone), with `text` typed in ready to send.
+// The default text is common.whatsappMessage in en.json.
+export const whatsappUrl = (text: string) =>
+  `https://wa.me/${site.phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
 
 // Labels and copy for these are in src/i18n/messages/en.json (common.nav, common.values, home.testimonials)
 export const navLinks = [

@@ -7,13 +7,13 @@ import { useState, useTransition } from "react";
 import AddressForm from "./AddressForm";
 import { PencilIcon, TrashIcon } from "./Icons";
 import OrderSummary from "./OrderSummary";
+import PayButton from "./PayButton";
 import { confirmPayment, createOrder, deleteAddress } from "@/app/actions/checkout";
 import { site } from "@/data/site";
 import { clearCart, setQty, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
 import type { Address, Order, SavedAddress } from "@/lib/order";
-import Spinner from "./Spinner";
 
 // The parts of Razorpay Checkout (https://checkout.razorpay.com/v1/checkout.js) we use
 type RazorpaySuccess = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
@@ -249,10 +249,9 @@ export default function CheckoutFlow({
               </button>
               {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
               <div className="mt-8">
-                <button type="button" onClick={handlePay} className="btn btn-primary" disabled={busy || !selectedId}>
-                  {busy && <Spinner />}
+                <PayButton onClick={handlePay} disabled={busy || !selectedId} pending={busy}>
                   {busy ? t("pleaseWait") : t("pay", { amount: formatPrice(cart.total) })}
-                </button>
+                </PayButton>
                 <p className="mt-3 text-xs text-chocolate/60">{t("paymentMethods")}</p>
               </div>
             </>
@@ -273,10 +272,9 @@ export default function CheckoutFlow({
           </p>
           {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
           <div className="mt-8 flex flex-wrap items-center gap-6">
-            <button type="button" onClick={handlePay} className="btn btn-primary" disabled={busy}>
-              {busy && <Spinner />}
+            <PayButton onClick={handlePay} disabled={busy} pending={busy}>
               {busy ? t("pleaseWait") : t("pay", { amount: formatPrice(order.total) })}
-            </button>
+            </PayButton>
             <button
               type="button"
               onClick={() => {

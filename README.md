@@ -1,5 +1,7 @@
 # MELOVME — Online Store
 
+[![Tests](https://github.com/ARchanaarchu2001/MeLovMe/actions/workflows/test.yml/badge.svg)](https://github.com/ARchanaarchu2001/MeLovMe/actions/workflows/test.yml)
+
 E-commerce site for MELOVME, built with Next.js (App Router), Tailwind CSS and MongoDB.
 
 ## Run
@@ -13,6 +15,15 @@ npm run build && npm start   # production server (needs Node.js hosting, e.g. Ve
 
 In development, leave the `NEXT_PUBLIC_FIREBASE_*` variables empty: the login OTP is printed in the terminal running
 `npm run dev` instead of being sent by SMS.
+
+## Tests
+
+```bash
+npm test           # watch mode while coding
+npm run test:run   # run everything once (also runs on GitHub for every push)
+```
+
+What is tested, how to write tests and what is still to do: [TESTING.md](TESTING.md).
 
 ## Shopping flow
 

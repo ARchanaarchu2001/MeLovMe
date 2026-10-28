@@ -7,10 +7,13 @@ export default function Price({
   product,
   className = "",
   showBadge = true,
+  savings = false,
 }: {
   product: Pick<Product, "price" | "offer">;
   className?: string;
   showBadge?: boolean;
+  // Show "Save ₹200" instead of the "20% OFF" badge
+  savings?: boolean;
 }) {
   const t = useTranslations("products.price");
   const { price, mrp, off } = priceOf(product);
@@ -22,7 +25,9 @@ export default function Price({
           <s className="text-[0.85em] text-chocolate/50" aria-label={t("regular", { price: formatPrice(mrp) })}>
             {formatPrice(mrp)}
           </s>
-          {showBadge && (
+          {savings ? (
+            <span className="text-[0.75em] font-medium text-chocolate/70">{t("save", { amount: formatPrice(mrp - price) })}</span>
+          ) : showBadge && (
             <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-chocolate">
               {t("off", { percent: off })}
             </span>

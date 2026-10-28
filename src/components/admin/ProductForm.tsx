@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { saveProduct, type ProductErrors, type ProductInput } from "@/app/actions/admin";
 import { formatPrice } from "@/lib/format";
-import { priceOf } from "@/lib/product";
+import { MAX_COMBOS, priceOf } from "@/lib/product";
+import { MAX_QTY } from "@/lib/order";
 import Spinner from "@/components/Spinner";
+import { StockBadge } from "@/components/admin/ui";
 
 const input = "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold";
 const label = "mb-1.5 block text-xs uppercase tracking-[0.15em] text-chocolate/60";
@@ -56,14 +58,20 @@ async function uploadToCloudinary(image: Blob) {
   return data.secure_url.replace("/image/upload/", "/image/upload/f_auto,q_auto/");
 }
 
-type FormValues = Omit<ProductInput, "highlights" | "ingredients" | "price" | "offer"> & {
+// One combo row as typed: pieces and total price (strings while editing), optional tag
+type ComboRow = { qty: string; price: string; tag: "" | "popular" | "best" };
+
+type FormValues = Omit<ProductInput, "highlights" | "ingredients" | "price" | "stock" | "offer" | "combos"> & {
   price: string;
+  stock: string;
   highlights: string; // one per line
   ingredients: string; // one per line
   offerType: "none" | "percent" | "flat";
   offerValue: string;
+  offerDuration: "always" | "dates"; // runs until turned off, or only between two dates
   offerStart: string;
   offerEnd: string;
+  combos: ComboRow[];
 };
 
 export type ProductFormInitial = ProductInput;
@@ -73,12 +81,15 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
   const [v, setV] = useState<FormValues>({
     ...initial,
     price: initial.price ? String(initial.price) : "",
+    stock: initial.stock === null ? "" : String(initial.stock),
     highlights: initial.highlights.join("\n"),
     ingredients: initial.ingredients.join("\n"),
     offerType: initial.offer?.type ?? "none",
     offerValue: initial.offer ? String(initial.offer.value) : "",
+    offerDuration: initial.offer?.startDate || initial.offer?.endDate ? "dates" : "always",
     offerStart: initial.offer?.startDate ?? "",
     offerEnd: initial.offer?.endDate ?? "",
+    combos: initial.combos.map((c) => ({ qty: String(c.qty), price: String(c.price), tag: c.tag ?? "" })),
   });
   // On a new product the URL name follows the name until it's edited by hand
   const [slugTouched, setSlugTouched] = useState(!isNew);
@@ -143,6 +154,8 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
       category: v.category,
       size: v.size,
       price: Number(v.price),
+      // Unchanged: send null so the server keeps the current count (orders may have changed it)
+      stock: !isNew && initial.stock !== null && v.stock === String(initial.stock) ? null : v.stock.trim() === "" ? NaN : Number(v.stock),
       shortDescription: v.shortDescription,
       description: v.description,
       images: v.images,
@@ -153,8 +166,18 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
       offer:
         v.offerType === "none"
           ? null
-          : { type: v.offerType, value: Number(v.offerValue), startDate: v.offerStart, endDate: v.offerEnd },
+          : v.offerDuration === "always"
+            ? { type: v.offerType, value: Number(v.offerValue), startDate: "", endDate: "" }
+            : { type: v.offerType, value: Number(v.offerValue), startDate: v.offerStart, endDate: v.offerEnd },
+      // Rows left completely empty are ignored
+      combos: v.combos
+        .filter((c) => c.qty.trim() || c.price.trim())
+        .map((c) => ({ qty: Number(c.qty), price: Number(c.price), ...(c.tag && { tag: c.tag }) })),
     };
+    if (v.offerType !== "none" && v.offerDuration === "dates" && !v.offerEnd) {
+      setErrors({ offerDates: "Choose the last day of the offer, or pick “Always on”." });
+      return;
+    }
     startTransition(async () => {
       const res = await saveProduct(payload, isNew);
       if ("errors" in res) {
@@ -300,6 +323,15 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
             </span>
             <input type="checkbox" checked={v.enabled} onChange={(e) => set("enabled", e.target.checked)} className="h-5 w-5 accent-gold" />
           </label>
+          <div className="mt-4 border-t border-chocolate/10 pt-4">
+            <Field label="Stock (units on hand)" error={errors.stock}>
+              <input {...field("stock")} inputMode="numeric" placeholder="e.g. 25" className={input} />
+            </Field>
+            <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-chocolate/60">
+              <StockBadge stock={v.stock.trim() === "" ? null : Number(v.stock)} />
+              Goes down by itself as orders are paid. At 0 the product stays in the shop, but can&apos;t be bought.
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-4 rounded-2xl border border-chocolate/15 p-5">
@@ -321,16 +353,38 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
               <Field label={v.offerType === "percent" ? "Discount (%)" : "Discount (₹)"} error={errors.offerValue}>
                 <input {...field("offerValue")} inputMode="numeric" className={input} />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Starts">
-                  <input type="date" {...field("offerStart")} className={input} />
-                </Field>
-                <Field label="Ends">
-                  <input type="date" {...field("offerEnd")} className={input} />
-                </Field>
+              <div>
+                <span className={label}>Runs</span>
+                <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.12em]">
+                  {(["always", "dates"] as const).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => set("offerDuration", d)}
+                      aria-pressed={v.offerDuration === d}
+                      className={`rounded-full px-4 py-1.5 ${v.offerDuration === d ? "bg-chocolate text-ivory" : "border border-chocolate/20 hover:border-gold"}`}
+                    >
+                      {d === "always" ? "Always on" : "Set dates"}
+                    </button>
+                  ))}
+                </div>
               </div>
+              {v.offerDuration === "dates" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Starts">
+                    <input type="date" {...field("offerStart")} className={input} />
+                  </Field>
+                  <Field label="Ends">
+                    <input type="date" {...field("offerEnd")} min={v.offerStart || undefined} className={input} />
+                  </Field>
+                </div>
+              )}
               {errors.offerDates && <p className="-mt-2 text-xs text-red-700">{errors.offerDates}</p>}
-              <p className="-mt-1 text-xs text-chocolate/60">Leave dates empty to start now and run until you turn it off.</p>
+              <p className="-mt-1 text-xs text-chocolate/60">
+                {v.offerDuration === "always"
+                  ? "Starts now and runs until you turn it off."
+                  : "Runs from the start of the first day to the end of the last day (India time). Leave Starts empty to begin today. Customers see how many days are left."}
+              </p>
               {preview && (
                 <p className="rounded-xl bg-ivory px-4 py-3 text-sm">
                   Customers pay <strong className="text-gold">{formatPrice(preview.price)}</strong>{" "}
@@ -340,6 +394,13 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
             </>
           )}
         </div>
+
+        <CombosBox
+          rows={v.combos}
+          price={Number(v.price)}
+          error={errors.combos}
+          onChange={(combos) => set("combos", combos)}
+        />
 
         <div className="flex flex-wrap items-center gap-4">
           <button type="submit" className="btn btn-primary" disabled={pending || uploading > 0}>
@@ -378,6 +439,85 @@ function Field({ label: text, error, hint, group, children }: {
         {children}
       </Wrapper>
       {error ? <p className="mt-1.5 text-xs text-red-700">{error}</p> : hint && <p className="mt-1.5 text-xs text-chocolate/60">{hint}</p>}
+    </div>
+  );
+}
+
+// "Buy more, pay less": up to MAX_COMBOS rows of pieces + total price, with the saving worked out
+function CombosBox({ rows, price, error, onChange }: {
+  rows: ComboRow[];
+  price: number; // the regular price of one piece, as typed above
+  error?: string;
+  onChange: (rows: ComboRow[]) => void;
+}) {
+  const update = (i: number, patch: Partial<ComboRow>) => onChange(rows.map((r, k) => (k === i ? { ...r, ...patch } : r)));
+  const small = "w-full rounded-xl border border-chocolate/20 bg-white/60 px-3 py-2 text-sm outline-none focus:border-gold";
+
+  return (
+    <div className="grid gap-4 rounded-2xl border border-chocolate/15 p-5">
+      <div>
+        <p className="text-sm font-medium">Combo offers</p>
+        <p className="text-xs text-chocolate/60">Buy more, pay less, e.g. 2 pieces for ₹3,000. Customers choose them on the product page.</p>
+      </div>
+      {rows.map((r, i) => {
+        const qty = Number(r.qty);
+        const total = Number(r.price);
+        const regular = price > 0 && qty >= 2 ? price * qty : 0;
+        const saving = regular && total > 0 ? regular - total : null;
+        return (
+          <div key={i} className="grid gap-2 rounded-xl bg-ivory/60 p-3">
+            <div className="grid grid-cols-[4.5rem_1fr_auto] items-end gap-2">
+              <label>
+                <span className={label}>Pieces</span>
+                <input value={r.qty} onChange={(e) => update(i, { qty: e.target.value })} inputMode="numeric" placeholder="2" className={small} />
+              </label>
+              <label>
+                <span className={label}>Total price (₹)</span>
+                <input value={r.price} onChange={(e) => update(i, { price: e.target.value })} inputMode="numeric" placeholder="3000" className={small} />
+              </label>
+              <button
+                type="button"
+                onClick={() => onChange(rows.filter((_, k) => k !== i))}
+                className="mb-1 px-2 py-1 text-chocolate/60 hover:text-red-700"
+                aria-label={`Remove combo ${i + 1}`}
+                title="Remove"
+              >
+                ✕
+              </button>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-chocolate/70">
+              Tag
+              <select value={r.tag} onChange={(e) => update(i, { tag: e.target.value as ComboRow["tag"] })} className="rounded-lg border border-chocolate/20 bg-white/60 px-2 py-1 text-xs outline-none focus:border-gold">
+                <option value="">None</option>
+                <option value="popular">Most popular</option>
+                <option value="best">Best value</option>
+              </select>
+            </label>
+            {saving !== null &&
+              (saving > 0 ? (
+                <p className="text-xs text-green-800">
+                  Customer saves {formatPrice(saving)} ({Math.round((saving / regular) * 100)}%) vs {qty} × {formatPrice(price)}
+                </p>
+              ) : (
+                <p className="text-xs text-red-700">Must be less than {formatPrice(regular)} to be a deal.</p>
+              ))}
+          </div>
+        );
+      })}
+      {error && <p className="text-xs text-red-700">{error}</p>}
+      {rows.length < MAX_COMBOS && (
+        <button
+          type="button"
+          onClick={() => onChange([...rows, { qty: String(Math.min(MAX_QTY, (Math.max(1, ...rows.map((r) => Number(r.qty) || 1))) + 1)), price: "", tag: "" }])}
+          className="justify-self-start rounded-full border border-dashed border-chocolate/30 px-5 py-2 text-xs uppercase tracking-[0.12em] text-chocolate/70 hover:border-gold hover:text-gold"
+        >
+          + Add combo
+        </button>
+      )}
+      <p className="text-xs text-chocolate/60">
+        The cart uses combos by itself: with 2- and 3-piece combos, 5 pieces cost one of each. While an offer makes single pieces
+        cheaper than a combo, that combo is hidden.
+      </p>
     </div>
   );
 }

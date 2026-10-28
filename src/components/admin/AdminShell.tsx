@@ -18,6 +18,8 @@ const nav = [
   { href: "/admin/orders/", label: "Orders", icon: icon("M6 7h12l-1 13H7L6 7Zm3 0V6a3 3 0 0 1 6 0v1") },
   { href: "/admin/customers/", label: "Customers", icon: icon("M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 7m6 9a7 7 0 0 0-4-6.3") },
   { href: "/admin/products/", label: "Products", icon: icon("M12 3 4 7v10l8 4 8-4V7l-8-4Zm0 0v18M4 7l8 4 8-4") },
+  { href: "/admin/reviews/", label: "Reviews", icon: icon("m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z") },
+  { href: "/admin/announcement/", label: "Announcement bar", icon: icon("M4 10v4h3l6 4V6L7 10H4Zm13-1.5a4 4 0 0 1 0 7M19.5 6a7.5 7.5 0 0 1 0 12") },
 ];
 
 // The admin area's frame: a sidebar on desktop, a top bar with a slide-in menu on phones

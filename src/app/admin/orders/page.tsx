@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Filter } from "mongodb";
-import { FulfillmentBadge, PaymentBadge, SearchBox, Stat, formatDateTime, paymentLabel, searchRegex } from "@/components/admin/ui";
+import { FulfillmentBadge, Pagination, PaymentBadge, SearchBox, Stat, formatDateTime, paymentLabel, searchRegex } from "@/components/admin/ui";
 import { formatPrice } from "@/lib/format";
 import { getDb, type OrderDoc } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/session";
@@ -14,14 +14,14 @@ const views = [
   { key: "all", label: "All", filter: {} },
 ] as const satisfies readonly { key: string; label: string; filter: Filter<OrderDoc> }[];
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 export default async function AdminOrdersPage({ searchParams }: PageProps<"/admin/orders">) {
   await requireAdmin("/admin/orders/");
   const sp = await searchParams;
   const view = views.find((v) => v.key === sp.view) ?? views[0];
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 100) : "";
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = Math.max(1, Math.floor(Number(sp.page)) || 1);
 
   // Search by order ID, customer name or phone
   const filter: Filter<OrderDoc> = { ...view.filter };
@@ -44,7 +44,6 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
       u,
     ]),
   );
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const href = (params: Record<string, string | number>) =>
     `/admin/orders/?${new URLSearchParams({ view: view.key, ...(q && { q }), ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])) })}`;
 
@@ -119,13 +118,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
         </div>
       )}
 
-      {pages > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-6 text-xs uppercase tracking-[0.15em]">
-          {page > 1 && <Link href={href({ page: page - 1 })} className="hover:text-gold">← Newer</Link>}
-          <span className="text-chocolate/60">Page {page} of {pages}</span>
-          {page < pages && <Link href={href({ page: page + 1 })} className="hover:text-gold">Older →</Link>}
-        </div>
-      )}
+      <Pagination page={page} pageSize={PAGE_SIZE} total={total} href={(p) => href({ page: p })} />
     </div>
   );
 }

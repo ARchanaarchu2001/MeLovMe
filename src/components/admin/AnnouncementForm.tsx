@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { saveAnnouncement } from "@/app/actions/admin";
 import AnnouncementBar from "@/components/AnnouncementBar";
 import Spinner from "@/components/Spinner";
+import { hasAnnouncementErrors, validateAnnouncement, type AnnouncementErrors } from "@/lib/admin-validation";
 import { HEX_COLOR, announcementSpeeds, defaultAnnouncement, type Announcement } from "@/lib/announcement";
 
 const input = "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold";
@@ -25,32 +26,79 @@ const MAX_MESSAGES = 10;
 export default function AnnouncementForm({ initial }: { initial: Announcement }) {
   const router = useRouter();
   const [v, setV] = useState<Announcement>(initial.messages.length ? initial : { ...initial, messages: [{ text: "" }] });
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<AnnouncementErrors>({});
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
+  const list = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
 
   const update = (patch: Partial<Announcement>) => {
     setV((prev) => ({ ...prev, ...patch }));
     setSaved(false);
   };
-  const setMessage = (i: number, patch: { text?: string; link?: string }) =>
+  const setMessage = (i: number, patch: { text?: string; link?: string }) => {
     update({ messages: v.messages.map((m, k) => (k === i ? { ...m, ...patch } : m)) });
-  const moveMessage = (i: number, to: number) => {
-    const messages = [...v.messages];
-    const [m] = messages.splice(i, 1);
-    messages.splice(to, 0, m);
-    update({ messages });
+    setErrors((prev) => ({ ...prev, form: undefined, messages: prev.messages?.map((e, k) => (k === i ? undefined : e)) }));
   };
+  const moveMessage = (i: number, to: number) => {
+    setV((prev) => {
+      const messages = [...prev.messages];
+      const [m] = messages.splice(i, 1);
+      messages.splice(to, 0, m);
+      return { ...prev, messages };
+    });
+    // Row errors belong to rows by position, so they'd point at the wrong ones after a move
+    setErrors((prev) => ({ ...prev, messages: undefined }));
+    setSaved(false);
+  };
+
+  // Drag a row by its handle (mouse or finger): rows swap as it passes their middle
+  function startDrag(e: ReactPointerEvent, i: number) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    let from = i;
+    setDragging(i);
+    const onMove = (ev: PointerEvent) => {
+      const rows = [...(list.current?.querySelectorAll<HTMLElement>("[data-row]") ?? [])];
+      const to = rows.filter((row, k) => {
+        if (k === from) return false;
+        const box = row.getBoundingClientRect();
+        return ev.clientY > box.top + box.height / 2;
+      }).length;
+      if (to !== from) {
+        moveMessage(from, to);
+        from = to;
+        setDragging(to);
+      }
+    };
+    const onUp = () => {
+      setDragging(null);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
+
+  // Keyboard: focus the handle, then ↑ / ↓ moves the row
+  function handleKey(e: KeyboardEvent, i: number) {
+    const to = e.key === "ArrowUp" ? i - 1 : e.key === "ArrowDown" ? i + 1 : -1;
+    if (to < 0 || to >= v.messages.length) return;
+    e.preventDefault();
+    moveMessage(i, to);
+    requestAnimationFrame(() => list.current?.querySelectorAll<HTMLElement>("[data-handle]")[to]?.focus());
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    const found = validateAnnouncement(v);
+    if (hasAnnouncementErrors(found)) return setErrors(found);
     startTransition(async () => {
       const res = await saveAnnouncement(v);
-      if ("error" in res) {
-        setError(res.error);
-        return;
-      }
-      setError("");
+      if ("errors" in res) return setErrors(res.errors);
+      setErrors({});
       setSaved(true);
       router.refresh();
     });
@@ -78,42 +126,79 @@ export default function AnnouncementForm({ initial }: { initial: Announcement })
             <p className="text-sm font-medium">Messages</p>
             <p className="text-xs text-chocolate/60">
               They scroll one after another, e.g. &ldquo;Free shipping above ₹999&rdquo;. A link is optional: a shop page like
-              /products/, or a full https:// link.
+              /products/, or a full https:// link. Drag <span aria-hidden="true">⠿</span> to change the order, then save.
             </p>
           </div>
-          {v.messages.map((m, i) => (
-            <div key={i} className="grid gap-2 rounded-xl bg-ivory/60 p-3 sm:grid-cols-[1fr_12rem_auto] sm:items-center">
-              <input
-                value={m.text}
-                onChange={(e) => setMessage(i, { text: e.target.value })}
-                maxLength={120}
-                placeholder="Message, e.g. Flat 30% off | Summer Collection"
-                aria-label={`Message ${i + 1}`}
-                className={input}
-              />
-              <input
-                value={m.link ?? ""}
-                onChange={(e) => setMessage(i, { link: e.target.value })}
-                maxLength={300}
-                placeholder="Link (optional)"
-                aria-label={`Link for message ${i + 1}`}
-                className={input}
-              />
-              <div className="flex items-center justify-end gap-1 text-chocolate/60">
-                <button type="button" onClick={() => moveMessage(i, i - 1)} disabled={i === 0} className="px-2 py-1 hover:text-gold disabled:opacity-25" aria-label={`Move message ${i + 1} up`} title="Move up">↑</button>
-                <button type="button" onClick={() => moveMessage(i, i + 1)} disabled={i === v.messages.length - 1} className="px-2 py-1 hover:text-gold disabled:opacity-25" aria-label={`Move message ${i + 1} down`} title="Move down">↓</button>
-                <button
-                  type="button"
-                  onClick={() => update({ messages: v.messages.filter((_, k) => k !== i) })}
-                  className="px-2 py-1 hover:text-red-700"
-                  aria-label={`Remove message ${i + 1}`}
-                  title="Remove"
+          <div ref={list} className="grid gap-3">
+            {v.messages.map((m, i) => {
+              const rowErrors = errors.messages?.[i];
+              return (
+                <div
+                  key={i}
+                  data-row
+                  className={`rounded-xl p-3 transition-shadow ${
+                    dragging === i ? "relative z-10 bg-white shadow-[0_12px_30px_-12px_rgba(46,26,17,0.45)] ring-1 ring-gold/60" : "bg-ivory/60"
+                  }`}
                 >
-                  ✕
-                </button>
-              </div>
-            </div>
-          ))}
+                  <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:grid-cols-[auto_1fr_12rem_auto]">
+                    {/* Drag handle */}
+                    <button
+                      type="button"
+                      data-handle
+                      onPointerDown={(e) => startDrag(e, i)}
+                      onKeyDown={(e) => handleKey(e, i)}
+                      aria-label={`Message ${i + 1}: drag, or press up and down arrows, to change the order`}
+                      title="Drag to reorder"
+                      className={`flex h-9 w-7 touch-none items-center justify-center rounded-lg text-chocolate/40 hover:bg-chocolate/5 hover:text-chocolate ${
+                        dragging === i ? "cursor-grabbing text-gold" : "cursor-grab"
+                      }`}
+                    >
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+                        <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
+                        <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
+                        <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
+                      </svg>
+                    </button>
+                    <input
+                      value={m.text}
+                      onChange={(e) => setMessage(i, { text: e.target.value })}
+                      maxLength={120}
+                      placeholder="Message, e.g. Flat 30% off | Summer Collection"
+                      aria-label={`Message ${i + 1}`}
+                      aria-invalid={!!rowErrors?.text}
+                      className={`${input} aria-invalid:border-red-700`}
+                    />
+                    <input
+                      value={m.link ?? ""}
+                      onChange={(e) => setMessage(i, { link: e.target.value })}
+                      maxLength={300}
+                      placeholder="Link (optional)"
+                      aria-label={`Link for message ${i + 1}`}
+                      aria-invalid={!!rowErrors?.link}
+                      className={`${input} col-start-2 row-start-2 aria-invalid:border-red-700 sm:col-start-auto sm:row-start-auto`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        update({ messages: v.messages.filter((_, k) => k !== i) });
+                        setErrors((prev) => ({ ...prev, messages: undefined }));
+                      }}
+                      className="col-start-3 row-start-1 flex h-9 w-9 items-center justify-center rounded-full text-chocolate/50 hover:bg-red-700/10 hover:text-red-700 sm:col-start-auto"
+                      aria-label={`Remove message ${i + 1}`}
+                      title="Remove"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6 6 18" />
+                      </svg>
+                    </button>
+                  </div>
+                  {(rowErrors?.text || rowErrors?.link) && (
+                    <p className="mt-1.5 pl-9 text-xs text-red-700">{[rowErrors.text, rowErrors.link].filter(Boolean).join(" ")}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
           {v.messages.length < MAX_MESSAGES && (
             <button
               type="button"
@@ -157,8 +242,8 @@ export default function AnnouncementForm({ initial }: { initial: Announcement })
                 );
               })}
             </div>
-            <ColorField label="Background" value={v.background} onChange={(background) => update({ background })} />
-            <ColorField label="Text" value={v.textColor} onChange={(textColor) => update({ textColor })} />
+            <ColorField label="Background" value={v.background} error={errors.background} onChange={(background) => update({ background })} />
+            <ColorField label="Text" value={v.textColor} error={errors.textColor} onChange={(textColor) => update({ textColor })} />
             <button
               type="button"
               onClick={() => update({ background: defaultAnnouncement.background, textColor: defaultAnnouncement.textColor })}
@@ -185,9 +270,9 @@ export default function AnnouncementForm({ initial }: { initial: Announcement })
             </div>
           </div>
 
-          {error && (
+          {hasAnnouncementErrors(errors) && (
             <p className="rounded-xl bg-red-700/10 px-4 py-3 text-sm text-red-800" role="alert">
-              {error}
+              {errors.form ?? "Please fix the highlighted fields."}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-4">
@@ -204,7 +289,7 @@ export default function AnnouncementForm({ initial }: { initial: Announcement })
 }
 
 // A colour picker with the hex code next to it (either can be edited)
-function ColorField({ label: text, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function ColorField({ label: text, value, error, onChange }: { label: string; value: string; error?: string; onChange: (v: string) => void }) {
   const [typed, setTyped] = useState(value);
   // Keep the text box in step when the colour changes elsewhere (picker, theme buttons)
   const [shown, setShown] = useState(value);
@@ -234,9 +319,11 @@ function ColorField({ label: text, value, onChange }: { label: string; value: st
           maxLength={7}
           spellCheck={false}
           aria-label={`${text} colour code`}
-          className={`${input} font-mono uppercase`}
+          aria-invalid={!!error}
+          className={`${input} font-mono uppercase aria-invalid:border-red-700`}
         />
       </div>
+      {error && <p className="mt-1.5 text-xs text-red-700">{error}</p>}
     </div>
   );
 }

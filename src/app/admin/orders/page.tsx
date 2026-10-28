@@ -9,8 +9,9 @@ import { requireAdmin } from "@/lib/server/session";
 export const metadata: Metadata = { title: "Orders" };
 
 const views = [
-  { key: "paid", label: "Paid", filter: { status: "paid" } },
+  { key: "paid", label: "Paid", filter: { status: "paid", fulfillment: { $ne: "cancelled" } } },
   { key: "awaiting", label: "Awaiting payment", filter: { status: "awaiting_payment" } },
+  { key: "cancelled", label: "Cancelled", filter: { status: "paid", fulfillment: "cancelled" } },
   { key: "all", label: "All", filter: {} },
 ] as const satisfies readonly { key: string; label: string; filter: Filter<OrderDoc> }[];
 

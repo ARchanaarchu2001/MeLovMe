@@ -1,5 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { ObjectId } from "mongodb";
@@ -29,14 +30,15 @@ export async function deleteSession() {
   store.delete(COOKIE);
 }
 
-// The logged-in user, or null for guests
-export async function getUser() {
+// The logged-in user, or null for guests. cache() runs the lookup once per request, so a
+// layout and its page both checking the login share one MongoDB lookup.
+export const getUser = cache(async () => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const { sessions, users } = await getDb();
   const session = await sessions.findOne({ token, expiresAt: { $gt: new Date() } });
   return session ? users.findOne({ _id: session.userId }) : null;
-}
+});
 
 // For pages and actions that need a login: guests are sent to the login page,
 // which brings them back to `returnTo` afterwards

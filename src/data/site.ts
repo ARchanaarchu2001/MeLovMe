@@ -6,7 +6,11 @@ export const site = {
   phone: "+91 99466 58691",
   social: {
     instagram: "https://www.instagram.com/melovme.in/",
-    facebook: "https://facebook.com/",
+    // TODO: the shop's own pages; all point to Instagram for now
+    facebook: "https://www.instagram.com/melovme.in/",
+    x: "https://www.instagram.com/melovme.in/",
+    youtube: "https://www.instagram.com/melovme.in/",
+    pinterest: "https://www.instagram.com/melovme.in/",
   },
   shipping: {
     fee: 0, // flat delivery charge in rupees
@@ -30,6 +34,10 @@ export const navLinks = [
   { href: "/about/", key: "about" },
   { href: "/contact/", key: "contact" },
 ] as const;
+
+// Order the social icons appear in (header menu and footer)
+export const socialLinks = ["instagram", "facebook", "x", "youtube", "pinterest"] as const;
+export type SocialName = (typeof socialLinks)[number];
 
 export const values = [
   { key: "natural", icon: "leaf" },

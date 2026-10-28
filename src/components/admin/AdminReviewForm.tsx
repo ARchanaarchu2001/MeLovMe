@@ -5,29 +5,39 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 import { saveAdminReview } from "@/app/actions/admin";
 import Spinner from "@/components/Spinner";
+import ProductSelect, { type ProductOption } from "@/components/admin/ProductSelect";
+import { RequiredMark } from "@/components/admin/ui";
+import { validateAdminReview, type AdminReviewErrors } from "@/lib/admin-validation";
 import { reviewLimits, type ReviewInput } from "@/lib/review";
 
-const input = "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold";
+const input =
+  "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold aria-invalid:border-red-700";
 const label = "mb-1.5 block text-xs uppercase tracking-[0.15em] text-chocolate/60";
 
-type Errors = Partial<Record<keyof ReviewInput | "productSlug", string>>;
+type Errors = AdminReviewErrors;
 
 // Adds a review on behalf of the shop (`id` null), or edits one the shop added.
 // It's saved with source "admin", so it's always clear it didn't come from a customer account.
 export default function AdminReviewForm({ id, products, initial }: {
   id: string | null;
-  products: { slug: string; name: string }[];
+  products: ProductOption[];
   initial: ReviewInput & { productSlug: string };
 }) {
   const router = useRouter();
   const [v, setV] = useState(initial);
   const [errors, setErrors] = useState<Errors>({});
   const [pending, startTransition] = useTransition();
-  const set = <K extends keyof typeof v>(k: K, value: (typeof v)[K]) => setV((prev) => ({ ...prev, [k]: value }));
+  // Editing a field clears its error
+  const set = <K extends keyof typeof v>(k: K, value: (typeof v)[K]) => {
+    setV((prev) => ({ ...prev, [k]: value }));
+    setErrors((prev) => ({ ...prev, [k]: undefined }));
+  };
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const { productSlug, ...review } = v;
+    const found = validateAdminReview(productSlug, review);
+    if (Object.keys(found).length) return setErrors(found);
     startTransition(async () => {
       const res = await saveAdminReview(id, productSlug, review);
       if ("errors" in res) {
@@ -49,25 +59,19 @@ export default function AdminReviewForm({ id, products, initial }: {
       </p>
 
       <div>
-        <p className={label}>Product</p>
-        <div className="flex flex-wrap gap-2">
-          {products.map((p) => (
-            <button
-              key={p.slug}
-              type="button"
-              onClick={() => set("productSlug", p.slug)}
-              aria-pressed={v.productSlug === p.slug}
-              className={`rounded-full px-4 py-1.5 text-sm ${v.productSlug === p.slug ? "bg-chocolate text-ivory" : "border border-chocolate/20 hover:border-gold"}`}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
+        <p className={label}>Product<RequiredMark /></p>
+        <ProductSelect
+          products={products}
+          value={v.productSlug}
+          onChange={(slug) => set("productSlug", slug)}
+          invalid={!!errors.productSlug}
+          className="sm:w-96"
+        />
         {error("productSlug")}
       </div>
 
       <div>
-        <p className={label}>Rating</p>
+        <p className={label}>Rating<RequiredMark /></p>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (
             <button key={n} type="button" onClick={() => set("rating", n)} aria-label={`${n} star${n === 1 ? "" : "s"}`} aria-pressed={v.rating === n} className="p-0.5 text-gold">
@@ -81,19 +85,20 @@ export default function AdminReviewForm({ id, products, initial }: {
       </div>
 
       <label>
-        <span className={label}>Reviewer name (shown in the shop)</span>
-        <input value={v.name} onChange={(e) => set("name", e.target.value)} maxLength={reviewLimits.name} className={input} />
+        <span className={label}>Reviewer name (shown in the shop)<RequiredMark /></span>
+        <input value={v.name} onChange={(e) => set("name", e.target.value)} maxLength={reviewLimits.name} aria-invalid={!!errors.name} className={input} />
         {error("name")}
       </label>
 
       <label>
         <span className={label}>Title (optional)</span>
-        <input value={v.title} onChange={(e) => set("title", e.target.value)} maxLength={reviewLimits.title} className={input} />
+        <input value={v.title} onChange={(e) => set("title", e.target.value)} maxLength={reviewLimits.title} aria-invalid={!!errors.title} className={input} />
+        {error("title")}
       </label>
 
       <label>
-        <span className={label}>Review</span>
-        <textarea value={v.text} onChange={(e) => set("text", e.target.value)} maxLength={reviewLimits.text} rows={6} className={`${input} resize-y`} />
+        <span className={label}>Review<RequiredMark /></span>
+        <textarea value={v.text} onChange={(e) => set("text", e.target.value)} maxLength={reviewLimits.text} rows={6} aria-invalid={!!errors.text} className={`${input} resize-y`} />
         {error("text")}
       </label>
 

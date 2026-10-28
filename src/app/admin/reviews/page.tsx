@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Filter } from "mongodb";
 import Stars from "@/components/Stars";
 import ReviewActions from "@/components/admin/ReviewActions";
+import ReviewProductFilter from "@/components/admin/ReviewProductFilter";
 import { Pagination, SearchBox, Stat, formatDateTime, searchRegex } from "@/components/admin/ui";
 import { getDb, type ReviewDoc } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/session";
@@ -34,13 +35,16 @@ export default async function AdminReviewsPage({ searchParams }: PageProps<"/adm
   }
 
   const { reviews, products, users } = await getDb();
-  const [list, total, counts, productList] = await Promise.all([
+  const [list, total, counts, productList, perProduct] = await Promise.all([
     reviews.find(filter).sort({ createdAt: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).toArray(),
     reviews.countDocuments(filter),
     Promise.all(views.map((v) => reviews.countDocuments({ ...v.filter, ...(product && { productSlug: product }) }))),
-    products.find({}, { projection: { name: 1 } }).sort({ createdAt: 1 }).toArray(),
+    products.find({}, { projection: { name: 1, images: 1 } }).sort({ name: 1 }).toArray(),
+    // Reviews per product in the current tab, shown next to each name in the product filter
+    reviews.aggregate<{ _id: string; n: number }>([{ $match: view.filter }, { $group: { _id: "$productSlug", n: { $sum: 1 } } }]).toArray(),
   ]);
   const productName = new Map(productList.map((p) => [p._id, p.name]));
+  const reviewCount = new Map(perProduct.map((r) => [r._id, r.n]));
   // The customer account behind each customer review
   const accounts = new Map(
     (
@@ -84,21 +88,12 @@ export default async function AdminReviewsPage({ searchParams }: PageProps<"/adm
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <SearchBox action="/admin/reviews/" q={q} placeholder="Name or review text" hidden={{ view: view.key, ...(product && { product }) }} />
-        {/* Product filter */}
-        <div className="flex flex-wrap gap-2 text-xs">
-          <Link href={`/admin/reviews/?view=${view.key}`} className={`rounded-full border px-3 py-1 ${product ? "border-chocolate/15 text-chocolate/60 hover:border-gold" : "border-chocolate bg-chocolate text-ivory"}`}>
-            All products
-          </Link>
-          {productList.map((p) => (
-            <Link
-              key={p._id}
-              href={`/admin/reviews/?view=${view.key}&product=${encodeURIComponent(p._id)}`}
-              className={`rounded-full border px-3 py-1 ${product === p._id ? "border-chocolate bg-chocolate text-ivory" : "border-chocolate/15 text-chocolate/60 hover:border-gold"}`}
-            >
-              {p.name}
-            </Link>
-          ))}
-        </div>
+        <ReviewProductFilter
+          products={productList.map((p) => ({ slug: p._id, name: p.name, image: p.images?.[0], count: reviewCount.get(p._id) ?? 0 }))}
+          value={product}
+          view={view.key}
+          q={q}
+        />
       </div>
 
       {list.length === 0 ? (
@@ -130,7 +125,7 @@ export default async function AdminReviewsPage({ searchParams }: PageProps<"/adm
                       </Link>
                     </p>
                   </div>
-                  <ReviewActions id={r._id.toHexString()} hidden={r.hidden} editable={r.source === "admin"} />
+                  <ReviewActions id={r._id.toHexString()} hidden={r.hidden} editable={r.source === "admin"} by={r.name} />
                 </div>
               </li>
             );

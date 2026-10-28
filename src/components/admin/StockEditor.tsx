@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 import { setProductStock } from "@/app/actions/admin";
 import Spinner from "@/components/Spinner";
+import { onlyDigits } from "@/lib/admin-validation";
 import { StockBadge } from "./ui";
 
 // Units on hand for one product in the product list, editable in place (e.g. after restocking)
@@ -24,12 +25,13 @@ export default function StockEditor({ slug, name, stock }: { slug: string; name:
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-1.5">
+    // Fixed width, so the badge and box line up the same on every row
+    <form onSubmit={handleSubmit} className="grid w-36 justify-items-start gap-1.5">
       <StockBadge stock={stock} />
-      <div className="flex items-center gap-2">
+      <div className="flex w-full items-center gap-2">
         <input
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => setValue(onlyDigits(e.target.value))}
           inputMode="numeric"
           placeholder="Units"
           aria-label={`${name}: units in stock`}

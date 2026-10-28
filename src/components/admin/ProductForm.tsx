@@ -3,19 +3,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
-import { saveProduct, type ProductErrors, type ProductInput } from "@/app/actions/admin";
+import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { saveProduct } from "@/app/actions/admin";
+import { MAX_IMAGE_MB, onlyDigits, productLimits, toSlug, validateProduct, type ProductErrors, type ProductInput } from "@/lib/admin-validation";
 import { formatPrice } from "@/lib/format";
 import { MAX_COMBOS, priceOf } from "@/lib/product";
 import { MAX_QTY } from "@/lib/order";
 import Spinner from "@/components/Spinner";
-import { StockBadge } from "@/components/admin/ui";
+import { TrashIcon } from "@/components/admin/actions";
+import CategoryPicker from "@/components/admin/CategoryPicker";
+import { RequiredMark, StockBadge } from "@/components/admin/ui";
 
-const input = "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold";
+const input =
+  "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold aria-invalid:border-red-700";
 const label = "mb-1.5 block text-xs uppercase tracking-[0.15em] text-chocolate/60";
-
-const toSlug = (s: string) =>
-  s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // Shrinks a photo to at most 1600px wide/high and re-encodes it as WebP, so uploads stay small
 async function shrink(file: File): Promise<Blob> {
@@ -60,6 +62,11 @@ async function uploadToCloudinary(image: Blob) {
 
 // One combo row as typed: pieces and total price (strings while editing), optional tag
 type ComboRow = { qty: string; price: string; tag: "" | "popular" | "best" };
+const comboTags: { value: ComboRow["tag"]; label: string }[] = [
+  { value: "", label: "None" },
+  { value: "popular", label: "Popular" },
+  { value: "best", label: "Best value" },
+];
 
 type FormValues = Omit<ProductInput, "highlights" | "ingredients" | "price" | "stock" | "offer" | "combos"> & {
   price: string;
@@ -76,7 +83,15 @@ type FormValues = Omit<ProductInput, "highlights" | "ingredients" | "price" | "s
 
 export type ProductFormInitial = ProductInput;
 
-export default function ProductForm({ initial, isNew }: { initial: ProductFormInitial; isNew: boolean }) {
+// Which error a form value shows (most have their own; the offer boxes share two)
+const errorFor = (k: keyof FormValues): keyof ProductErrors =>
+  k === "offerStart" || k === "offerEnd" || k === "offerDuration" ? "offerDates" : k === "offerType" ? "offerValue" : (k as keyof ProductErrors);
+
+export default function ProductForm({ initial, isNew, categories }: {
+  initial: ProductFormInitial;
+  isNew: boolean;
+  categories: string[]; // already used by other products, offered as choices
+}) {
   const router = useRouter();
   const [v, setV] = useState<FormValues>({
     ...initial,
@@ -91,43 +106,76 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
     offerEnd: initial.offer?.endDate ?? "",
     combos: initial.combos.map((c) => ({ qty: String(c.qty), price: String(c.price), tag: c.tag ?? "" })),
   });
-  // On a new product the URL name follows the name until it's edited by hand
-  const [slugTouched, setSlugTouched] = useState(!isNew);
   const [errors, setErrors] = useState<ProductErrors>({});
   const [uploading, setUploading] = useState(0);
   const [uploadError, setUploadError] = useState("");
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const fileInput = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  // Bumped on each failed Save, so the page jumps to the first problem once the errors are shown
+  const [errorJump, setErrorJump] = useState(0);
 
+  useEffect(() => {
+    if (!errorJump) return;
+    const message = formRef.current?.querySelector("[data-error]");
+    const box = message?.closest("[data-field]") ?? message?.parentElement;
+    if (!box) return window.scrollTo({ top: 0, behavior: "smooth" }); // only the message at the top
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
+    box.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
+  }, [errorJump]);
+
+  // Editing a field clears its error; the rest stay until the next Save
+  const clearError = (...keys: (keyof ProductErrors)[]) =>
+    setErrors((prev) => {
+      const next = { ...prev };
+      for (const k of keys) delete next[k];
+      return next;
+    });
   const set = <K extends keyof FormValues>(k: K, value: FormValues[K]) => {
-    setV((prev) => ({
-      ...prev,
-      [k]: value,
-      ...(k === "name" && !slugTouched && { slug: toSlug(String(value)) }),
-    }));
+    setV((prev) => ({ ...prev, [k]: value }));
+    clearError(errorFor(k));
     setSaved(false);
   };
   const field = (k: keyof FormValues) => ({
     value: String(v[k]),
     onChange: (e: { target: { value: string } }) => set(k, e.target.value as never),
+    "aria-invalid": !!errors[errorFor(k)],
+  });
+  // A box for whole numbers: anything but digits is dropped as it's typed
+  const numberField = (k: "price" | "stock" | "offerValue", maxDigits?: number) => ({
+    ...field(k),
+    onChange: (e: { target: { value: string } }) => set(k, onlyDigits(e.target.value, maxDigits)),
+    inputMode: "numeric" as const,
+    autoComplete: "off",
   });
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
     setUploadError("");
+    clearError("images");
+    const problems: string[] = [];
     for (const file of Array.from(files).slice(0, 8 - v.images.length)) {
+      if (!IMAGE_TYPES.includes(file.type)) {
+        problems.push(`${file.name} is not a JPG, PNG or WebP photo.`);
+        continue;
+      }
+      if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+        problems.push(`${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB. Photos can be up to ${MAX_IMAGE_MB} MB.`);
+        continue;
+      }
       setUploading((n) => n + 1);
       try {
         const url = await uploadToCloudinary(await shrink(file));
         setV((prev) => ({ ...prev, images: [...prev.images, url] }));
         setSaved(false);
       } catch (err) {
-        setUploadError(err instanceof Error ? err.message : "Upload failed");
+        problems.push(`${file.name}: ${err instanceof Error ? err.message : "Upload failed"}`);
       } finally {
         setUploading((n) => n - 1);
       }
     }
+    setUploadError(problems.join(" "));
     if (fileInput.current) fileInput.current.value = "";
   }
 
@@ -149,7 +197,8 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const payload: ProductInput = {
-      slug: v.slug,
+      // A new product's URL name comes from its name (the server makes sure it's free)
+      slug: isNew ? toSlug(v.name) : v.slug,
       name: v.name,
       category: v.category,
       size: v.size,
@@ -174,20 +223,22 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
         .filter((c) => c.qty.trim() || c.price.trim())
         .map((c) => ({ qty: Number(c.qty), price: Number(c.price), ...(c.tag && { tag: c.tag }) })),
     };
-    if (v.offerType !== "none" && v.offerDuration === "dates" && !v.offerEnd) {
-      setErrors({ offerDates: "Choose the last day of the offer, or pick “Always on”." });
-      return;
+    const found = validateProduct(payload);
+    if (v.offerType !== "none" && v.offerDuration === "dates" && !v.offerEnd && !found.offerDates) {
+      found.offerDates = "Choose the last day of the offer, or pick “Always on”.";
     }
+    const showErrors = (e: ProductErrors) => {
+      setErrors(e);
+      setErrorJump((n) => n + 1);
+    };
+    if (Object.keys(found).length) return showErrors(found);
     startTransition(async () => {
       const res = await saveProduct(payload, isNew);
-      if ("errors" in res) {
-        setErrors(res.errors);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
+      if ("errors" in res) return showErrors(res.errors);
       setErrors({});
+      // A new product: back to the list, which says it was added (the form is left, so it starts empty next time)
+      if (isNew) return router.push(`/admin/products/?added=${encodeURIComponent(res.slug)}`);
       setSaved(true);
-      if (isNew) router.push(`/admin/products/${res.slug}/`);
       router.refresh();
     });
   }
@@ -195,61 +246,65 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
   const hasErrors = Object.keys(errors).length > 0;
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+    <form ref={formRef} onSubmit={handleSubmit} noValidate className="grid gap-6 lg:grid-cols-[1fr_22rem]">
       <div className="grid h-fit gap-5">
         {hasErrors && (
           <p className="rounded-xl bg-red-700/10 px-4 py-3 text-sm text-red-800" role="alert">
-            Please fix the highlighted fields.
+            {errors.slug ?? "Please fix the highlighted fields."}
           </p>
         )}
-        <Field label="Name" error={errors.name}>
-          <input {...field("name")} className={input} required />
-        </Field>
-        <Field
-          label="URL name"
-          error={errors.slug}
-          hint={isNew ? `Shop page: /products/${v.slug || "…"}/ — can't be changed later.` : `/products/${v.slug}/ (fixed)`}
-        >
-          <input
-            value={v.slug}
-            onChange={(e) => {
-              setSlugTouched(true);
-              set("slug", toSlug(e.target.value));
-            }}
-            readOnly={!isNew}
-            className={`${input} ${isNew ? "" : "bg-transparent text-chocolate/60"}`}
-          />
+        <Field label="Name" required error={errors.name}>
+          <input {...field("name")} maxLength={productLimits.name} className={input} required />
         </Field>
         <div className="grid gap-5 sm:grid-cols-3">
-          <Field label="Category" error={errors.category}>
-            <input {...field("category")} placeholder="Body Care" className={input} />
+          <Field label="Category" required error={errors.category} hint={categories.length ? "Pick one, or type a new one." : undefined}>
+            <CategoryPicker
+              value={v.category}
+              options={categories}
+              onChange={(c) => set("category", c)}
+              invalid={!!errors.category}
+              maxLength={productLimits.category}
+              className={input}
+            />
           </Field>
-          <Field label="Size" error={errors.size}>
-            <input {...field("size")} placeholder="50 ml" className={input} />
+          <Field label="Size" required error={errors.size}>
+            <input {...field("size")} maxLength={productLimits.size} placeholder="50 ml" className={input} />
           </Field>
-          <Field label="Price (₹)" error={errors.price}>
-            <input {...field("price")} inputMode="numeric" className={input} />
+          <Field label="Price (₹)" required error={errors.price}>
+            <input {...numberField("price")} placeholder="899" className={input} />
           </Field>
         </div>
-        <Field label="Short description" error={errors.shortDescription} hint="Shown on product cards.">
-          <textarea {...field("shortDescription")} rows={2} className={input} />
+        <Field
+          label="Short description"
+          required
+          error={errors.shortDescription}
+          hint="Shown on product cards."
+          count={<CharCount text={v.shortDescription} min={productLimits.minShortDescription} max={productLimits.shortDescription} />}
+        >
+          <textarea {...field("shortDescription")} maxLength={productLimits.shortDescription} rows={2} className={input} />
         </Field>
-        <Field label="Description" error={errors.description}>
-          <textarea {...field("description")} rows={5} className={input} />
+        <Field
+          label="Description"
+          required
+          error={errors.description}
+          hint="Shown on the product page."
+          count={<CharCount text={v.description} min={productLimits.minDescription} max={productLimits.description} />}
+        >
+          <textarea {...field("description")} maxLength={productLimits.description} rows={5} className={input} />
         </Field>
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Highlights" hint="One per line.">
+          <Field label="Highlights" error={errors.highlights} hint="One per line.">
             <textarea {...field("highlights")} rows={5} className={input} />
           </Field>
-          <Field label="Key ingredients" hint="One per line.">
+          <Field label="Key ingredients" error={errors.ingredients} hint="One per line.">
             <textarea {...field("ingredients")} rows={5} className={input} />
           </Field>
         </div>
-        <Field label="How to use">
-          <textarea {...field("howToUse")} rows={3} className={input} />
+        <Field label="How to use" error={errors.howToUse} count={<CharCount text={v.howToUse} max={productLimits.howToUse} />}>
+          <textarea {...field("howToUse")} maxLength={productLimits.howToUse} rows={3} className={input} />
         </Field>
 
-        <Field label="Images" group error={errors.images || uploadError} hint="The first image is the main one. Up to 8.">
+        <Field label="Images" group required error={errors.images || uploadError} hint={`JPG, PNG or WebP, up to ${MAX_IMAGE_MB} MB each. Up to 8 photos; the first is the main one.`}>
           <div className="flex flex-wrap gap-3">
             {v.images.map((src, i) => (
               <div key={src} className="w-28">
@@ -324,8 +379,8 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
             <input type="checkbox" checked={v.enabled} onChange={(e) => set("enabled", e.target.checked)} className="h-5 w-5 accent-gold" />
           </label>
           <div className="mt-4 border-t border-chocolate/10 pt-4">
-            <Field label="Stock (units on hand)" error={errors.stock}>
-              <input {...field("stock")} inputMode="numeric" placeholder="e.g. 25" className={input} />
+            <Field label="Stock (units on hand)" required={isNew} error={errors.stock}>
+              <input {...numberField("stock")} placeholder="e.g. 25" className={input} />
             </Field>
             <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-chocolate/60">
               <StockBadge stock={v.stock.trim() === "" ? null : Number(v.stock)} />
@@ -350,8 +405,8 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
           </div>
           {v.offerType !== "none" && (
             <>
-              <Field label={v.offerType === "percent" ? "Discount (%)" : "Discount (₹)"} error={errors.offerValue}>
-                <input {...field("offerValue")} inputMode="numeric" className={input} />
+              <Field label={v.offerType === "percent" ? "Discount (%)" : "Discount (₹)"} required error={errors.offerValue}>
+                <input {...numberField("offerValue", v.offerType === "percent" ? 2 : undefined)} className={input} />
               </Field>
               <div>
                 <span className={label}>Runs</span>
@@ -379,7 +434,7 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
                   </Field>
                 </div>
               )}
-              {errors.offerDates && <p className="-mt-2 text-xs text-red-700">{errors.offerDates}</p>}
+              {errors.offerDates && <p data-error className="-mt-2 text-xs text-red-700">{errors.offerDates}</p>}
               <p className="-mt-1 text-xs text-chocolate/60">
                 {v.offerDuration === "always"
                   ? "Starts now and runs until you turn it off."
@@ -402,21 +457,16 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
           onChange={(combos) => set("combos", combos)}
         />
 
-        <div className="flex flex-wrap items-center gap-4">
-          <button type="submit" className="btn btn-primary" disabled={pending || uploading > 0}>
+        <div className="grid gap-3 text-center">
+          <button type="submit" className="btn btn-primary w-full justify-center" disabled={pending || uploading > 0}>
             {pending && <Spinner />}
             {pending ? "Saving…" : isNew ? "Create product" : "Save changes"}
           </button>
+          {saved && !isNew && <p className="text-sm text-green-800" role="status">Saved. The shop is updated.</p>}
           <Link href="/admin/products/" className="text-xs uppercase tracking-[0.15em] text-chocolate/60 hover:text-gold">
-            Back to products
+            ← Back to products
           </Link>
         </div>
-        {saved && !isNew && <p className="text-sm text-green-800" role="status">Saved. The shop is updated.</p>}
-        {!isNew && v.enabled && (
-          <Link href={`/products/${v.slug}/`} target="_blank" className="text-xs uppercase tracking-[0.15em] text-gold hover:underline">
-            View in shop ↗
-          </Link>
-        )}
       </div>
     </form>
   );
@@ -424,22 +474,45 @@ export default function ProductForm({ initial, isNew }: { initial: ProductFormIn
 
 // A titled field. It is a <label> (tapping the title focuses the input) except for groups of
 // buttons like the image picker, where a label would trigger its first button.
-function Field({ label: text, error, hint, group, children }: {
+function Field({ label: text, error, hint, count, group, required, children }: {
   label: string;
   error?: string;
   hint?: string;
+  count?: ReactNode; // a character counter, shown on the right under the box
   group?: boolean;
+  required?: boolean;
   children: ReactNode;
 }) {
   const Wrapper = group ? "div" : "label";
+  const note = error ? <p data-error className="text-xs text-red-700">{error}</p> : hint && <p className="text-xs text-chocolate/60">{hint}</p>;
   return (
-    <div>
+    <div data-field>
       <Wrapper className="block">
-        <span className={label}>{text}</span>
+        <span className={label}>{text}{required && <RequiredMark />}</span>
         {children}
       </Wrapper>
-      {error ? <p className="mt-1.5 text-xs text-red-700">{error}</p> : hint && <p className="mt-1.5 text-xs text-chocolate/60">{hint}</p>}
+      {(note || count) && (
+        <div className="mt-1.5 flex items-start justify-between gap-4">
+          {note || <span />}
+          {count}
+        </div>
+      )}
     </div>
+  );
+}
+
+// "12 more characters needed" until the minimum is reached, then "120 / 5,000"
+function CharCount({ text, min = 0, max }: { text: string; min?: number; max: number }) {
+  const n = text.trim().length;
+  const short = n > 0 && n < min ? min - n : 0;
+  return (
+    <p className={`shrink-0 text-xs tabular-nums ${short ? "text-amber-800" : n >= max ? "text-red-700" : "text-chocolate/50"}`} aria-live="polite">
+      {n === 0 && min
+        ? `At least ${min} characters`
+        : short
+          ? `${short} more character${short === 1 ? "" : "s"} needed`
+          : `${n.toLocaleString("en-IN")} / ${max.toLocaleString("en-IN")}`}
+    </p>
   );
 }
 
@@ -469,30 +542,41 @@ function CombosBox({ rows, price, error, onChange }: {
             <div className="grid grid-cols-[4.5rem_1fr_auto] items-end gap-2">
               <label>
                 <span className={label}>Pieces</span>
-                <input value={r.qty} onChange={(e) => update(i, { qty: e.target.value })} inputMode="numeric" placeholder="2" className={small} />
+                <input value={r.qty} onChange={(e) => update(i, { qty: onlyDigits(e.target.value, String(MAX_QTY).length) })} inputMode="numeric" placeholder="2" className={small} />
               </label>
               <label>
                 <span className={label}>Total price (₹)</span>
-                <input value={r.price} onChange={(e) => update(i, { price: e.target.value })} inputMode="numeric" placeholder="3000" className={small} />
+                <input value={r.price} onChange={(e) => update(i, { price: onlyDigits(e.target.value) })} inputMode="numeric" placeholder="3000" className={small} />
               </label>
               <button
                 type="button"
                 onClick={() => onChange(rows.filter((_, k) => k !== i))}
-                className="mb-1 px-2 py-1 text-chocolate/60 hover:text-red-700"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-chocolate/50 hover:bg-red-700/10 hover:text-red-700"
                 aria-label={`Remove combo ${i + 1}`}
                 title="Remove"
               >
-                ✕
+                <TrashIcon />
               </button>
             </div>
-            <label className="flex items-center gap-2 text-xs text-chocolate/70">
-              Tag
-              <select value={r.tag} onChange={(e) => update(i, { tag: e.target.value as ComboRow["tag"] })} className="rounded-lg border border-chocolate/20 bg-white/60 px-2 py-1 text-xs outline-none focus:border-gold">
-                <option value="">None</option>
-                <option value="popular">Most popular</option>
-                <option value="best">Best value</option>
-              </select>
-            </label>
+            <div>
+              <span className={label}>Tag</span>
+              {/* One-row switch: the chosen tag sits on a white tab */}
+              <div className="grid grid-cols-3 gap-1 rounded-full bg-chocolate/[0.07] p-1" role="group" aria-label={`Tag for combo ${i + 1}`}>
+                {comboTags.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => update(i, { tag: t.value })}
+                    aria-pressed={r.tag === t.value}
+                    className={`truncate rounded-full px-2 py-1.5 text-xs transition-all ${
+                      r.tag === t.value ? "bg-white font-medium text-chocolate shadow-sm" : "text-chocolate/60 hover:text-chocolate"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             {saving !== null &&
               (saving > 0 ? (
                 <p className="text-xs text-green-800">
@@ -504,7 +588,7 @@ function CombosBox({ rows, price, error, onChange }: {
           </div>
         );
       })}
-      {error && <p className="text-xs text-red-700">{error}</p>}
+      {error && <p data-error className="text-xs text-red-700">{error}</p>}
       {rows.length < MAX_COMBOS && (
         <button
           type="button"

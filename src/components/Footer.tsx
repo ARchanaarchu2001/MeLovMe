@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import Logo from "./Logo";
 import { SocialIcon } from "./Icons";
-import { navLinks, site, whatsappUrl } from "@/data/site";
+import { navLinks, site, socialLinks, whatsappUrl } from "@/data/site";
 import type { Product } from "@/lib/product";
 
 export default function Footer({ products }: { products: Product[] }) {
@@ -57,7 +57,7 @@ export default function Footer({ products }: { products: Product[] }) {
               </a>
             </li>
             <li className="flex gap-3 pt-2">
-              {(["instagram", "facebook"] as const).map((name) => (
+              {socialLinks.map((name) => (
                 <a
                   key={name}
                   href={site.social[name]}

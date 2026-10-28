@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 import { updateOrder } from "@/app/actions/admin";
+import { orderLimits, validateOrderUpdate, type OrderUpdateErrors } from "@/lib/admin-validation";
 import { fulfillmentLabels, type Fulfillment } from "@/lib/order";
 import Spinner from "@/components/Spinner";
 
-const input = "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold";
+const input =
+  "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold aria-invalid:border-red-700";
 const label = "mb-1.5 block text-xs uppercase tracking-[0.15em] text-chocolate/60";
 
 // The delivery steps, in order; "cancelled" is offered separately below them
@@ -34,26 +36,36 @@ export default function OrderUpdateForm({
   const router = useRouter();
   const [values, setValues] = useState(initial);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
+  const [errors, setErrors] = useState<OrderUpdateErrors>({});
   const [pending, startTransition] = useTransition();
   const set = (k: keyof typeof values) => (e: { target: { value: string } }) => {
     setValues({ ...values, [k]: e.target.value });
+    setErrors({ ...errors, [k]: undefined, ...(k === "trackingNumber" && { courier: undefined }) });
     setMessage(null);
   };
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    const found = validateOrderUpdate(values);
+    setErrors(found);
+    if (Object.keys(found).length) return setMessage({ text: "Please fix the highlighted fields.", error: true });
     if (values.fulfillment === "cancelled" && initial.fulfillment !== "cancelled" &&
       !window.confirm("Mark this order as cancelled? Remember to refund the payment in the Razorpay Dashboard.")) return;
     startTransition(async () => {
       const res = await updateOrder(orderId, values);
-      if ("error" in res) return setMessage({ text: res.error, error: true });
+      if ("error" in res) {
+        setErrors(res.errors ?? {});
+        return setMessage({ text: res.error, error: true });
+      }
       setMessage({ text: "Saved." });
       router.refresh();
     });
   }
 
+  const error = (k: keyof OrderUpdateErrors) => errors[k] && <p className="mt-1.5 text-xs text-red-700">{errors[k]}</p>;
+
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <form onSubmit={handleSubmit} noValidate className="grid gap-4">
       <fieldset>
         <legend className={label}>Status</legend>
         <StatusPicker
@@ -72,17 +84,20 @@ export default function OrderUpdateForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="courier" className={label}>Courier</label>
-          <input id="courier" value={values.courier} onChange={set("courier")} placeholder="e.g. Delhivery" className={input} />
+          <input id="courier" value={values.courier} onChange={set("courier")} maxLength={orderLimits.courier} placeholder="e.g. Delhivery" aria-invalid={!!errors.courier} className={input} />
+          {error("courier")}
         </div>
         <div>
           <label htmlFor="tracking" className={label}>Tracking number</label>
-          <input id="tracking" value={values.trackingNumber} onChange={set("trackingNumber")} className={input} />
+          <input id="tracking" value={values.trackingNumber} onChange={set("trackingNumber")} maxLength={orderLimits.trackingNumber} aria-invalid={!!errors.trackingNumber} className={input} />
+          {error("trackingNumber")}
         </div>
       </div>
       <p className="-mt-2 text-xs text-chocolate/60">The status, courier and tracking number are shown to the customer.</p>
       <div>
         <label htmlFor="note" className={label}>Private note</label>
-        <textarea id="note" value={values.adminNote} onChange={set("adminNote")} rows={3} placeholder="Only visible to admins" className={input} />
+        <textarea id="note" value={values.adminNote} onChange={set("adminNote")} rows={3} maxLength={orderLimits.adminNote} placeholder="Only visible to admins" aria-invalid={!!errors.adminNote} className={input} />
+        {error("adminNote")}
       </div>
       <div className="flex items-center gap-4">
         <button type="submit" className="btn btn-primary" disabled={pending}>

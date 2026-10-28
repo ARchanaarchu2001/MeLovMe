@@ -33,7 +33,10 @@
     },
     "social": {
       "instagram": "Instagram",
-      "facebook": "Facebook"
+      "facebook": "Facebook",
+      "x": "X (Twitter)",
+      "youtube": "YouTube",
+      "pinterest": "Pinterest"
     },
     "values": {
       "natural": {

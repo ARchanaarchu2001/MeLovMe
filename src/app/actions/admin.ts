@@ -1,9 +1,24 @@
 "use server";
 
 import { ObjectId } from "mongodb";
-import { HEX_COLOR, announcementSpeeds, type Announcement, type AnnouncementMessage } from "@/lib/announcement";
-import { MAX_QTY, fulfillments, type Fulfillment } from "@/lib/order";
-import { MAX_COMBOS, type Offer, type Product } from "@/lib/product";
+import {
+  hasAnnouncementErrors,
+  productLimits,
+  stockError,
+  toSlug,
+  validateAdminReview,
+  validateAnnouncement,
+  validateOrderUpdate,
+  validateProduct,
+  type AdminReviewErrors,
+  type AnnouncementErrors,
+  type OrderUpdateErrors,
+  type OrderUpdateInput,
+  type ProductErrors,
+  type ProductInput,
+} from "@/lib/admin-validation";
+import { announcementSpeeds, type Announcement, type AnnouncementMessage } from "@/lib/announcement";
+import type { Product } from "@/lib/product";
 import type { ReviewInput } from "@/lib/review";
 import { refreshAnnouncement } from "@/lib/server/announcement";
 import { cloudinaryCloudName } from "@/lib/server/cloudinary";
@@ -12,16 +27,25 @@ import { adjustStock, refreshCatalog } from "@/lib/server/products";
 import { cleanReview, refreshReviews } from "@/lib/server/reviews";
 import { requireAdmin } from "@/lib/server/session";
 
-const str = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
+// Text as typed, trimmed. Lengths are checked by the validators (with a message), not cut silently.
+const text = (v: unknown) => String(v ?? "").trim();
+const lines = (v: unknown) => (Array.isArray(v) ? v : []).map(text).filter(Boolean);
 
 // ---------- Orders ----------
 
 export async function updateOrder(
   orderId: string,
-  input: { fulfillment: Fulfillment; courier: string; trackingNumber: string; adminNote: string },
-): Promise<{ error: string } | { ok: true }> {
+  input: OrderUpdateInput,
+): Promise<{ error: string; errors?: OrderUpdateErrors } | { ok: true }> {
   await requireAdmin();
-  if (!fulfillments.includes(input?.fulfillment)) return { error: "Choose a valid status." };
+  const values: OrderUpdateInput = {
+    fulfillment: input?.fulfillment,
+    courier: text(input?.courier),
+    trackingNumber: text(input?.trackingNumber),
+    adminNote: text(input?.adminNote),
+  };
+  const errors = validateOrderUpdate(values);
+  if (Object.keys(errors).length) return { error: "Please fix the highlighted fields.", errors };
 
   const { orders } = await getDb();
   const before = await orders.findOneAndUpdate(
@@ -29,10 +53,10 @@ export async function updateOrder(
     { _id: String(orderId), status: "paid" },
     {
       $set: {
-        fulfillment: input.fulfillment,
-        courier: str(input.courier, 60),
-        trackingNumber: str(input.trackingNumber, 80),
-        adminNote: str(input.adminNote, 2000),
+        fulfillment: values.fulfillment,
+        courier: values.courier,
+        trackingNumber: values.trackingNumber,
+        adminNote: values.adminNote,
         updatedAt: new Date(),
       },
     },
@@ -41,126 +65,82 @@ export async function updateOrder(
   if (!before) return { error: "Only paid orders can be updated." };
   // Cancelling puts the items back in stock; un-cancelling takes them out again
   const wasCancelled = before.fulfillment === "cancelled";
-  const isCancelled = input.fulfillment === "cancelled";
+  const isCancelled = values.fulfillment === "cancelled";
   if (before.stockTaken && wasCancelled !== isCancelled) await adjustStock(before.items, isCancelled ? 1 : -1);
   return { ok: true };
 }
 
 // ---------- Products ----------
 
-// What the product form sends. Offer dates are "YYYY-MM-DD" (India time). `stock` is null when
-// editing and the count wasn't touched, so orders paid while the form was open aren't undone.
-export type ProductInput = Omit<Product, "offer" | "inStock"> & {
-  offer: { type: Offer["type"]; value: number; startDate: string; endDate: string } | null;
-};
-export type ProductErrors = Partial<Record<keyof ProductInput | "offerValue" | "offerDates", string>>;
-
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 // Only our own images: files in /public/images, or uploads in our Cloudinary account
 const isOwnImage = (url: string) =>
   /^\/images\/[\w.-]+$/.test(url) ||
   (!!cloudinaryCloudName() && url.startsWith(`https://res.cloudinary.com/${cloudinaryCloudName()}/image/upload/`));
-const lines = (v: unknown, maxItems: number, maxLength: number) =>
-  (Array.isArray(v) ? v : []).map((x) => str(x, maxLength)).filter(Boolean).slice(0, maxItems);
 
 function cleanProduct(input: ProductInput): { product: Omit<Product, "inStock">; errors: ProductErrors } {
-  const errors: ProductErrors = {};
-  const price = Number(input?.price);
-  const product: Omit<Product, "inStock"> = {
-    slug: str(input?.slug, 60).toLowerCase(),
-    name: str(input?.name, 100),
-    category: str(input?.category, 50),
-    size: str(input?.size, 50),
-    price,
-    shortDescription: str(input?.shortDescription, 300),
-    description: str(input?.description, 5000),
-    images: lines(input?.images, 8, 200),
-    highlights: lines(input?.highlights, 20, 200),
-    ingredients: lines(input?.ingredients, 30, 100),
-    howToUse: str(input?.howToUse, 2000),
+  const o = input?.offer;
+  const values: ProductInput = {
+    slug: text(input?.slug).toLowerCase(),
+    name: text(input?.name),
+    category: text(input?.category),
+    size: text(input?.size),
+    price: Number(input?.price),
+    shortDescription: text(input?.shortDescription),
+    description: text(input?.description),
+    images: lines(input?.images),
+    highlights: lines(input?.highlights),
+    ingredients: lines(input?.ingredients),
+    howToUse: text(input?.howToUse),
     enabled: input?.enabled === true,
     stock: input?.stock === null ? null : Number(input?.stock),
-    offer: null,
-    combos: [],
+    offer: o ? { type: o.type, value: Number(o.value), startDate: text(o.startDate), endDate: text(o.endDate) } : null,
+    combos: (Array.isArray(input?.combos) ? input.combos : []).map((c) => ({
+      qty: Number(c?.qty),
+      price: Number(c?.price),
+      ...((c?.tag === "popular" || c?.tag === "best") && { tag: c.tag }),
+    })),
   };
+  const errors = validateProduct(values);
+  if (!errors.images && !values.images.every(isOwnImage)) errors.images = "One of the images is not valid. Remove it and upload again.";
 
-  if (!SLUG.test(product.slug)) errors.slug = "Use lowercase letters, numbers and dashes, e.g. rose-body-mist.";
-  if (!product.name) errors.name = "Enter a name.";
-  if (!product.category) errors.category = "Enter a category.";
-  if (!product.size) errors.size = "Enter a size, e.g. 50 ml.";
-  if (!Number.isInteger(price) || price < 1 || price > 1_000_000) errors.price = "Enter a price in whole rupees (at least ₹1).";
-  if (product.stock !== null && !(Number.isInteger(product.stock) && product.stock >= 0 && product.stock <= 1_000_000)) {
-    errors.stock = "Enter how many you have, in whole units (0 if none).";
-  }
-  if (!product.shortDescription) errors.shortDescription = "Enter a short description.";
-  if (!product.description) errors.description = "Enter a description.";
-  if (!product.images.length) errors.images = "Add at least one image.";
-  else if (!product.images.every(isOwnImage)) errors.images = "One of the images is not valid. Remove it and upload again.";
-
-  const o = input?.offer;
-  if (o) {
-    const value = Number(o.value);
-    if (o.type === "percent" && !(Number.isInteger(value) && value >= 1 && value <= 90)) {
-      errors.offerValue = "Enter a whole % between 1 and 90.";
-    } else if (o.type === "flat" && !(Number.isInteger(value) && value >= 1 && value < price)) {
-      errors.offerValue = "Enter whole rupees, less than the price.";
-    } else if (o.type !== "percent" && o.type !== "flat") {
-      errors.offerValue = "Choose % off or ₹ off.";
-    }
-    const startDate = str(o.startDate, 10);
-    const endDate = str(o.endDate, 10);
-    if ((startDate && !DATE.test(startDate)) || (endDate && !DATE.test(endDate))) errors.offerDates = "Enter valid dates.";
-    else if (startDate && endDate && endDate < startDate) errors.offerDates = "The end date is before the start date.";
-    product.offer = {
-      type: o.type,
-      value,
+  const { offer, ...rest } = values;
+  const product: Omit<Product, "inStock"> = {
+    ...rest,
+    offer: offer && {
+      type: offer.type,
+      value: offer.value,
       // Dates are India time: start of the first day to end of the last day
-      ...(startDate && { startsAt: new Date(`${startDate}T00:00:00+05:30`).toISOString() }),
-      ...(endDate && { endsAt: new Date(`${endDate}T23:59:59+05:30`).toISOString() }),
-    };
-  }
-  // Combos: 2 to MAX_QTY pieces, each quantity once, cheaper than buying them one by one
-  const combos = (Array.isArray(input?.combos) ? input.combos : []).slice(0, MAX_COMBOS);
-  for (const c of combos) {
-    const qty = Number(c?.qty);
-    const total = Number(c?.price);
-    if (!(Number.isInteger(qty) && qty >= 2 && qty <= MAX_QTY)) {
-      errors.combos = `Pieces must be a whole number from 2 to ${MAX_QTY}.`;
-    } else if (product.combos.some((x) => x.qty === qty)) {
-      errors.combos = `There are two combos for ${qty} pieces. Keep one.`;
-    } else if (!(Number.isInteger(total) && total >= 1)) {
-      errors.combos = `Enter the total price for ${qty} pieces in whole rupees.`;
-    } else if (Number.isInteger(price) && total >= price * qty) {
-      errors.combos = `${qty} pieces must cost less than ₹${price * qty} (${qty} × the price), or it isn't a deal.`;
-    } else {
-      product.combos.push({ qty, price: total, ...((c.tag === "popular" || c.tag === "best") && { tag: c.tag }) });
-    }
-  }
-  product.combos.sort((a, b) => a.qty - b.qty);
+      ...(offer.startDate && { startsAt: new Date(`${offer.startDate}T00:00:00+05:30`).toISOString() }),
+      ...(offer.endDate && { endsAt: new Date(`${offer.endDate}T23:59:59+05:30`).toISOString() }),
+    },
+    combos: [...values.combos].sort((a, b) => a.qty - b.qty),
+  };
   return { product, errors };
 }
 
-// Creates a product (`isNew`) or updates the one with this slug (the slug itself can't change)
+// Creates a product (`isNew`) or updates the one with this slug (the slug itself can't change).
+// A new product's slug is made from its name, with -2, -3… added if another product has it.
 export async function saveProduct(
   input: ProductInput,
   isNew: boolean,
 ): Promise<{ errors: ProductErrors } | { ok: true; slug: string }> {
   await requireAdmin();
-  const { product, errors } = cleanProduct(input);
+  const { product, errors } = cleanProduct(isNew ? { ...input, slug: toSlug(text(input?.name)) } : input);
   if (Object.keys(errors).length) return { errors };
 
   const { products } = await getDb();
-  const { slug, stock, ...rest } = product;
+  const { slug: base, stock, ...rest } = product;
+  let slug = base;
   // A new product, or one from before stock counts, needs a count; otherwise null keeps the current one
   const counted = stock !== null ? { stock, inStock: stock > 0 } : null;
   const needCount = { errors: { stock: "Enter how many you have in stock." } };
   const now = new Date();
   if (isNew) {
     if (!counted) return needCount;
-    if (await products.findOne({ _id: slug }, { projection: { _id: 1 } })) {
-      return { errors: { slug: "Another product already uses this URL name." } };
-    }
+    const taken = new Set(
+      (await products.find({ _id: { $regex: `^${slug}(-\\d+)?$` } }, { projection: { _id: 1 } }).toArray()).map((p) => p._id),
+    );
+    for (let n = 2; taken.has(slug); n++) slug = `${base.slice(0, productLimits.slug - String(n).length - 1).replace(/-+$/, "")}-${n}`;
     await products.insertOne({ _id: slug, ...rest, ...counted, createdAt: now, updatedAt: now });
   } else {
     const doc = await products.findOne({ _id: slug }, { projection: { stock: 1 } });
@@ -184,34 +164,44 @@ export async function setProductFlag(slug: string, flag: "enabled", value: boole
 // The stock box in the product list: sets how many units are on hand
 export async function setProductStock(slug: string, stock: number): Promise<{ error: string } | { ok: true }> {
   await requireAdmin();
-  if (!(Number.isInteger(stock) && stock >= 0 && stock <= 1_000_000)) return { error: "Enter whole units (0 if none)." };
+  const error = stockError(stock);
+  if (error) return { error };
   await (await getDb()).products.updateOne({ _id: String(slug) }, { $set: { stock, inStock: stock > 0, updatedAt: new Date() } });
+  refreshCatalog();
+  return { ok: true };
+}
+
+// The delete button in the product list. Past orders keep their own copy of the item, so they're
+// unaffected; the product's reviews go too, so a new product with the same URL name starts fresh.
+export async function deleteProduct(slug: string): Promise<{ ok: true }> {
+  await requireAdmin();
+  const { products, reviews } = await getDb();
+  const { deletedCount } = await products.deleteOne({ _id: String(slug) });
+  if (deletedCount) {
+    await reviews.deleteMany({ productSlug: String(slug) });
+    refreshReviews();
+  }
   refreshCatalog();
   return { ok: true };
 }
 
 // ---------- Announcement bar ----------
 
-export async function saveAnnouncement(input: Announcement): Promise<{ error: string } | { ok: true }> {
+export async function saveAnnouncement(input: Announcement): Promise<{ errors: AnnouncementErrors } | { ok: true }> {
   await requireAdmin();
-  const messages: AnnouncementMessage[] = (Array.isArray(input?.messages) ? input.messages : [])
-    .map((m) => ({ text: str(m?.text, 120), link: str(m?.link, 300) }))
-    .filter((m) => m.text)
-    .slice(0, 10)
-    .map(({ text, link }) => (link ? { text, link } : { text }));
   const announcement: Announcement = {
     enabled: input?.enabled === true,
-    messages,
-    background: str(input?.background, 7),
-    textColor: str(input?.textColor, 7),
+    messages: (Array.isArray(input?.messages) ? input.messages : []).map((m) => ({ text: text(m?.text), link: text(m?.link) })),
+    background: text(input?.background),
+    textColor: text(input?.textColor),
     speed: announcementSpeeds.includes(input?.speed) ? input.speed : "normal",
   };
-
-  if (announcement.enabled && !messages.length) return { error: "Add at least one message, or switch the bar off." };
-  if (!HEX_COLOR.test(announcement.background) || !HEX_COLOR.test(announcement.textColor)) return { error: "Choose valid colours." };
-  // Links: a page of this shop ("/products/") or a secure link to another site
-  const bad = messages.find((m) => m.link && !/^\/(?!\/)\S*$/.test(m.link) && !/^https:\/\/\S+$/.test(m.link));
-  if (bad) return { error: `The link for “${bad.text}” must start with / (a shop page) or https://` };
+  const errors = validateAnnouncement(announcement);
+  if (hasAnnouncementErrors(errors)) return { errors };
+  // Empty rows are dropped; a link is only stored when there is one
+  announcement.messages = announcement.messages
+    .filter((m) => m.text)
+    .map(({ text, link }): AnnouncementMessage => (link ? { text, link } : { text }));
 
   await (await getDb()).settings.updateOne(
     { _id: "announcement" },
@@ -224,11 +214,6 @@ export async function saveAnnouncement(input: Announcement): Promise<{ error: st
 
 // ---------- Reviews ----------
 
-const reviewErrors = {
-  rating: "Choose a rating from 1 to 5 stars.",
-  name: "Enter the name to show with the review.",
-  text: "Write the review (at least a few words).",
-};
 const toObjectId = (id: string) => (ObjectId.isValid(String(id)) ? new ObjectId(String(id)) : null);
 
 // Adds a review from the shop (`id` null), or edits one the shop added. Customers' own reviews
@@ -237,16 +222,15 @@ export async function saveAdminReview(
   id: string | null,
   productSlug: string,
   input: ReviewInput,
-): Promise<{ errors: Partial<Record<keyof ReviewInput | "productSlug", string>> } | { ok: true }> {
+): Promise<{ errors: AdminReviewErrors } | { ok: true }> {
   const admin = await requireAdmin();
-  const { review, errors } = cleanReview(input);
-  const messages: Partial<Record<keyof ReviewInput | "productSlug", string>> = Object.fromEntries(
-    Object.entries(errors).map(([k, v]) => [k, reviewErrors[v]]),
-  );
+  const slug = text(productSlug);
+  const values: ReviewInput = { name: text(input?.name), rating: Number(input?.rating), title: text(input?.title), text: text(input?.text) };
+  const errors = validateAdminReview(slug, values);
   const { products, reviews } = await getDb();
-  const slug = String(productSlug);
-  if (!(await products.findOne({ _id: slug }, { projection: { _id: 1 } }))) messages.productSlug = "Choose a product.";
-  if (Object.keys(messages).length) return { errors: messages };
+  if (!errors.productSlug && !(await products.findOne({ _id: slug }, { projection: { _id: 1 } }))) errors.productSlug = "Choose a product.";
+  if (Object.keys(errors).length) return { errors };
+  const { review } = cleanReview(values);
 
   const now = new Date();
   if (id === null) {

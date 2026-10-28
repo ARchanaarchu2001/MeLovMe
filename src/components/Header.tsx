@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
 import { CartIcon, Icon, LeafArt, SocialIcon, UserIcon } from "./Icons";
-import { navLinks, site, whatsappUrl } from "@/data/site";
+import { navLinks, site, socialLinks, whatsappUrl } from "@/data/site";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 
@@ -185,7 +185,7 @@ export default function Header() {
             </div>
 
             <div className="mt-6 flex gap-3 pb-10">
-              {(["instagram", "facebook"] as const).map((name) => (
+              {socialLinks.map((name) => (
                 <a
                   key={name}
                   href={site.social[name]}

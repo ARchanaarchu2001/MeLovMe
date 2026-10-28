@@ -162,3 +162,21 @@ export function SearchBox({ action, q, placeholder, hidden = {} }: {
     </form>
   );
 }
+
+// "← All products" style link above a new/edit page, back to its list
+export function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} className="mb-3 inline-block text-xs uppercase tracking-[0.15em] text-chocolate/60 hover:text-gold">
+      ← {children}
+    </Link>
+  );
+}
+
+// Red asterisk after the label of a field that must be filled in
+export function RequiredMark() {
+  return (
+    <span className="ml-0.5 text-red-700" aria-hidden="true">
+      *
+    </span>
+  );
+}

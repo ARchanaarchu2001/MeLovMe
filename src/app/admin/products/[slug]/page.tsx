@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ProductForm from "@/components/admin/ProductForm";
+import { BackLink } from "@/components/admin/ui";
 import { getDb } from "@/lib/server/db";
-import { toProduct } from "@/lib/server/products";
+import { getCategories, toProduct } from "@/lib/server/products";
 import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Edit product" };
@@ -16,12 +17,15 @@ export default async function EditProductPage({ params }: PageProps<"/admin/prod
   const doc = await (await getDb()).products.findOne({ _id: slug });
   if (!doc) notFound();
   const p = toProduct(doc);
+  const categories = await getCategories();
 
   return (
     <div>
+      <BackLink href="/admin/products/">All products</BackLink>
       <h2 className="mb-6 text-2xl font-medium">{p.name}</h2>
       <ProductForm
         isNew={false}
+        categories={categories}
         initial={{
           ...p,
           offer: p.offer

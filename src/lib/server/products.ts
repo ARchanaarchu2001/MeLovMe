@@ -39,6 +39,12 @@ export async function getCatalogProduct(slug: string) {
   return (await getCatalog()).find((p) => p.slug === slug);
 }
 
+// Categories already in use, offered as choices in the admin product form
+export async function getCategories() {
+  const categories: unknown[] = await (await getDb()).products.distinct("category");
+  return categories.filter((x): x is string => typeof x === "string" && x.trim() !== "").sort((a, b) => a.localeCompare(b));
+}
+
 export function refreshCatalog() {
   // expire: 0 — the next visitor gets fresh data, not the old catalogue
   revalidateTag("products", { expire: 0 });

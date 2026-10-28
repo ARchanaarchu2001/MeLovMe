@@ -11,7 +11,7 @@ import PayButton from "./PayButton";
 import QtyStepper from "./QtyStepper";
 import RemoveItemDialog from "./RemoveItemDialog";
 import Price from "./Price";
-import { maxQtyFor, type Product } from "@/lib/product";
+import { maxQtyFor, offerStatus, type Product } from "@/lib/product";
 import { MAX_QTY, setQty, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
@@ -120,7 +120,12 @@ export default function CartView() {
         <OrderSummary subtotal={subtotal} shipping={shipping} total={total} />
         {outOfStock.length > 0 && <p className="mt-6 text-xs text-chocolate/60">{t("outOfStockNote")}</p>}
         {lines.length > 0 && (
-          <PayButton className="mt-8" tag={t("limitedOffer")} onClick={() => router.push("/checkout/")}>
+          <PayButton
+            className="mt-8"
+            // Only when something in the cart is actually on offer (a running offer or a combo price)
+            tag={lines.some((l) => l.comboSaving > 0 || offerStatus(l.product.offer) === "active") ? t("limitedOffer") : undefined}
+            onClick={() => router.push("/checkout/")}
+          >
             {t("checkout")}
           </PayButton>
         )}

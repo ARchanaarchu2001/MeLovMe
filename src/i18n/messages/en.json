@@ -476,6 +476,10 @@
       "metaTitle": "My Profile",
       "title": "Profile",
       "myOrders": "My Orders",
+      "ordersCount": "{count, plural, =0 {No orders yet} one {# order placed} other {# orders placed}}",
+      "wishlist": "Wishlist",
+      "wishlistText": "Products you've saved",
+      "memberSince": "Member since {date}",
       "logOut": "Log out"
     },
     "profileForm": {

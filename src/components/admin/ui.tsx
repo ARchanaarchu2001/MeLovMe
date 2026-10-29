@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fulfillmentLabels, type Fulfillment } from "@/lib/order";
+import { fulfillmentLabels, refundState, type Fulfillment, type OrderStatus, type Refund } from "@/lib/order";
 import { LOW_STOCK } from "@/lib/product";
 import type { PaymentDetails } from "@/lib/server/razorpay";
 
@@ -24,17 +24,32 @@ export const searchRegex = (q: string) => new RegExp(q.replace(/[.*+?^${}()|[\]\
 
 const pill = "inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em]";
 
-export function PaymentBadge({ status }: { status: "paid" | "awaiting_payment" }) {
-  return status === "paid" ? (
-    <span className={`${pill} bg-green-700/10 text-green-800`}>Paid</span>
-  ) : (
-    <span className={`${pill} bg-chocolate/10 text-chocolate/70`}>Awaiting payment</span>
-  );
+export function PaymentBadge({ status }: { status: OrderStatus }) {
+  if (status === "paid") return <span className={`${pill} bg-green-700/10 text-green-800`}>Paid</span>;
+  // Placed, cash to be collected on delivery
+  if (status === "cod") return <span className={`${pill} bg-amber-600/15 text-amber-900`}>Cash on delivery</span>;
+  return <span className={`${pill} bg-chocolate/10 text-chocolate/70`}>Awaiting payment</span>;
+}
+
+// "Refund initiated", "Refunded", "Partly refunded" or "Refund failed"; nothing without refunds
+export function RefundBadge({ order }: { order: { total: number; refunds?: Refund[] } }) {
+  const { label, pending } = refundState(order);
+  if (!label) return null;
+  const color = pending ? "bg-sky-700/10 text-sky-900" : label === "Refund failed" ? "bg-red-700/10 text-red-800" : "bg-violet-700/10 text-violet-900";
+  return <span className={`${pill} ${color}`}>{label}</span>;
 }
 
 // How an order was paid, e.g. "PhonePe · UPI", "Visa card ••4242", "Netbanking · HDFC"
 export function paymentLabel(p: PaymentDetails) {
-  const methods: Record<string, string> = { upi: "UPI", card: "Card", netbanking: "Netbanking", wallet: "Wallet", emi: "EMI", paylater: "Pay Later" };
+  const methods: Record<string, string> = {
+    upi: "UPI",
+    card: "Card",
+    netbanking: "Netbanking",
+    wallet: "Wallet",
+    emi: "EMI",
+    paylater: "Pay Later",
+    cod: "Cash on delivery",
+  };
   const method = methods[p.method] ?? p.method;
   if (p.method === "upi") return p.app ? `${p.app} · UPI` : "UPI";
   if (p.method === "card") return [p.card?.network, "card", p.card?.last4 && `••${p.card.last4}`].filter(Boolean).join(" ");

@@ -76,7 +76,17 @@ export default function Footer({ products }: { products: Product[] }) {
 
       <div className="border-t border-ivory/10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-5 py-6 text-xs text-ivory/50 md:flex-row md:px-8">
-          <p>{t("footer.copyright", { year: new Date().getFullYear() })}</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center md:justify-start">
+            <span>{t("footer.copyright", { year: new Date().getFullYear() })}</span>
+            <span aria-hidden="true">·</span>
+            <Link href="/privacy-policy/" className="hover:text-gold">
+              {t("footer.privacy")}
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link href="/refund-policy/" className="hover:text-gold">
+              {t("footer.policy")}
+            </Link>
+          </p>
           <p className="uppercase tracking-[0.3em]">{t("site.tagline")}</p>
         </div>
       </div>

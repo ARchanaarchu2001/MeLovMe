@@ -22,6 +22,13 @@ export const site = {
   orderEndpoint: "",
 };
 
+// The shop's public address, e.g. https://melovme.in (NEXT_PUBLIC_SITE_URL). Used for links that
+// leave the site, like the product photo WhatsApp shows when a product link is shared. On Vercel it
+// falls back to the production domain; on your own computer, to localhost.
+export const siteUrl = () =>
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:4000");
+
 // Opens a WhatsApp chat with the shop's number (site.phone), with `text` typed in ready to send.
 // The default text is common.whatsappMessage in en.json.
 export const whatsappUrl = (text: string) =>

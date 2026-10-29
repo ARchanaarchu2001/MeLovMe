@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import OrderSummary from "@/components/OrderSummary";
+import { MarkCodPaid, RefundPanel } from "@/components/admin/OrderPaymentActions";
 import OrderUpdateForm from "@/components/admin/OrderUpdateForm";
-import { PaymentBadge, formatDateTime, paymentLabel } from "@/components/admin/ui";
+import { PaymentBadge, RefundBadge, formatDateTime, paymentLabel } from "@/components/admin/ui";
 import { formatPrice } from "@/lib/format";
+import { isPlaced, refundState } from "@/lib/order";
 import { getDb } from "@/lib/server/db";
+import { syncPendingRefunds } from "@/lib/server/orders";
 import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Order" };
@@ -19,8 +22,14 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
   const { orders, users } = await getDb();
   const order = await orders.findOne({ _id: id });
   if (!order) notFound();
+  // Refunds Razorpay hasn't reported back on yet (the webhook can't reach a local computer)
+  await syncPendingRefunds(order);
   const customer = await users.findOne({ _id: order.userId }, { projection: { name: 1, phone: 1 } });
   const a = order.address;
+  const cod = order.paymentMethod === "cod";
+  const refunds = refundState(order);
+  // Refunds go through Razorpay, so only for orders paid online
+  const canRefund = order.status === "paid" && !cod && !!order.paymentId;
 
   return (
     <div>
@@ -30,8 +39,17 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
       <div className="mb-8 mt-4 flex flex-wrap items-center gap-4">
         <h2 className="text-2xl font-medium">{order._id}</h2>
         <PaymentBadge status={order.status} />
+        <RefundBadge order={order} />
         <span className="text-sm text-chocolate/60">Placed {formatDateTime(order.createdAt)}</span>
       </div>
+
+      {order.cancelledBy === "customer" && (
+        <p className="mb-6 rounded-2xl bg-red-700/10 px-5 py-3 text-sm text-red-800">
+          The customer cancelled this order from their order page.
+          {/* They were told the payment would be refunded */}
+          {canRefund && refunds.refundable > 0 && <strong> They paid online: refund {formatPrice(refunds.refundable)} below.</strong>}
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
         <div className="grid h-fit gap-6">
@@ -82,9 +100,22 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
           <div className={`${box} text-sm leading-relaxed`}>
             <h3 className={heading}>Payment</h3>
             <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-[auto_1fr]">
+              <dt className="text-chocolate/60">Method</dt>
+              <dd className="font-medium">{cod ? "Cash on delivery" : "Online (Razorpay)"}</dd>
               <dt className="text-chocolate/60">Status</dt>
-              <dd><PaymentBadge status={order.status} /></dd>
-              <dt className="text-chocolate/60">Paid at</dt>
+              <dd className="flex flex-wrap gap-1">
+                <PaymentBadge status={order.status} />
+                <RefundBadge order={order} />
+              </dd>
+              {refunds.refunded > 0 && (
+                <>
+                  <dt className="text-chocolate/60">Refunded</dt>
+                  <dd>
+                    {formatPrice(refunds.refunded)} of {formatPrice(order.total)}
+                  </dd>
+                </>
+              )}
+              <dt className="text-chocolate/60">{cod ? "Cash received" : "Paid at"}</dt>
               <dd>{order.paidAt ? formatDateTime(order.paidAt) : "—"}</dd>
               {order.payment && (
                 <>
@@ -104,10 +135,14 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                   )}
                 </>
               )}
-              <dt className="text-chocolate/60">Razorpay payment ID</dt>
-              <dd className="break-all font-mono text-xs">{order.paymentId ?? "—"}</dd>
-              <dt className="text-chocolate/60">Razorpay order ID</dt>
-              <dd className="break-all font-mono text-xs">{order.razorpayOrderId ?? "—"}</dd>
+              {!cod && (
+                <>
+                  <dt className="text-chocolate/60">Razorpay payment ID</dt>
+                  <dd className="break-all font-mono text-xs">{order.paymentId ?? "—"}</dd>
+                  <dt className="text-chocolate/60">Razorpay order ID</dt>
+                  <dd className="break-all font-mono text-xs">{order.razorpayOrderId ?? "—"}</dd>
+                </>
+              )}
             </dl>
             {order.paymentId && (
               <a
@@ -119,12 +154,24 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                 Open in Razorpay Dashboard ↗
               </a>
             )}
+            {order.status === "cod" && order.fulfillment !== "cancelled" && <MarkCodPaid orderId={order._id} total={order.total} />}
+            {canRefund && (
+              // Keyed by what's left, so the amount box resets after each refund
+              <RefundPanel
+                key={refunds.refundable}
+                orderId={order._id}
+                refunds={order.refunds ?? []}
+                refundable={refunds.refundable}
+                total={order.total}
+                delivered={order.fulfillment === "delivered"}
+              />
+            )}
           </div>
         </div>
 
         <div className={`${box} h-fit`}>
           <h3 className={heading}>Update order</h3>
-          {order.status === "paid" ? (
+          {isPlaced(order.status) ? (
             <OrderUpdateForm
               orderId={order._id}
               initial={{
@@ -133,6 +180,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                 trackingNumber: order.trackingNumber ?? "",
                 adminNote: order.adminNote ?? "",
               }}
+              paidOnline={order.status === "paid" && !cod}
             />
           ) : (
             <p className="text-sm text-chocolate/70">

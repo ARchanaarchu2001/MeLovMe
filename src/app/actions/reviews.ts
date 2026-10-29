@@ -1,6 +1,7 @@
 "use server";
 
 import { getTranslations } from "next-intl/server";
+import { placedStatuses } from "@/lib/order";
 import type { ReviewInput } from "@/lib/review";
 import { getDb } from "@/lib/server/db";
 import { getCatalogProduct } from "@/lib/server/products";
@@ -38,9 +39,9 @@ export async function saveMyReview(
   if (field) return { error: t(errors[field]!), field };
 
   const { orders, reviews } = await getDb();
-  // "Verified buyer": they have a paid, not-cancelled order with this product
+  // "Verified buyer": they have a placed (paid or cash on delivery), not-cancelled order with this product
   const bought = await orders.findOne(
-    { userId: user._id, status: "paid", fulfillment: { $ne: "cancelled" }, "items.slug": product.slug },
+    { userId: user._id, status: { $in: [...placedStatuses] }, fulfillment: { $ne: "cancelled" }, "items.slug": product.slug },
     { projection: { _id: 1 } },
   );
   const now = new Date();

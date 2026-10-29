@@ -1,4 +1,4 @@
-import { markOrderPaid } from "@/lib/server/orders";
+import { markOrderPaid, setRefundStatus } from "@/lib/server/orders";
 import { isValidWebhookSignature } from "@/lib/server/razorpay";
 
 type PaymentEvent = {
@@ -6,14 +6,16 @@ type PaymentEvent = {
   payload?: {
     payment?: { entity?: { id?: string; order_id?: string } };
     order?: { entity?: { id?: string } };
+    refund?: { entity?: { id?: string; status?: "pending" | "processed" | "failed" } };
   };
 };
 
 // Razorpay calls this when a payment completes, so the order is marked paid even if the
-// customer closed the page before checkout could confirm it.
+// customer closed the page before checkout could confirm it; and when a refund made from the
+// admin panel goes through or fails.
 // Set up in Razorpay Dashboard -> Account & Settings -> Webhooks, with the URL ending in a
-// slash (https://<your-domain>/api/razorpay/webhook/), the events `payment.captured` and
-// `order.paid`, and the same secret as RAZORPAY_WEBHOOK_SECRET.
+// slash (https://<your-domain>/api/razorpay/webhook/), the events `payment.captured`,
+// `order.paid`, `refund.processed` and `refund.failed`, and the same secret as RAZORPAY_WEBHOOK_SECRET.
 export async function POST(request: Request) {
   // The signature covers the exact bytes Razorpay sent, so read the raw text before parsing
   const body = await request.text();
@@ -33,6 +35,9 @@ export async function POST(request: Request) {
     const razorpayOrderId = event.payload?.order?.entity?.id ?? payment?.order_id;
     // Razorpay may send the same event more than once; markOrderPaid only acts the first time
     if (razorpayOrderId && payment?.id) await markOrderPaid(razorpayOrderId, payment.id);
+  } else if (event.event === "refund.processed" || event.event === "refund.failed") {
+    const refund = event.payload?.refund?.entity;
+    if (refund?.id) await setRefundStatus(refund.id, event.event === "refund.processed" ? "processed" : "failed");
   }
   return Response.json({ ok: true });
 }

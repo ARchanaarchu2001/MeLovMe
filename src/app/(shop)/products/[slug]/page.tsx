@@ -12,6 +12,7 @@ import OfferSticker, { OfferCountdown } from "@/components/OfferSticker";
 import Price from "@/components/Price";
 import ProductReviews from "@/components/ProductReviews";
 import Stars from "@/components/Stars";
+import { getPaymentSettings } from "@/lib/server/payments";
 import { getCatalog, getCatalogProduct } from "@/lib/server/products";
 import { getProductReviews } from "@/lib/server/reviews";
 
@@ -20,10 +21,26 @@ export async function generateStaticParams() {
   return (await getCatalog()).map((p) => ({ slug: p.slug }));
 }
 
+// The product photo apps show when its link is shared (WhatsApp, Instagram...). Cloudinary uploads
+// are sent as a JPG of at most 800px, since WhatsApp skips large or WebP/AVIF preview images.
+const shareImage = (src: string) =>
+  src.replace(/\/image\/upload\/(f_auto,q_auto\/)?/, "/image/upload/f_jpg,q_80,w_800,h_800,c_limit/");
+
 export async function generateMetadata({ params }: PageProps<"/products/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const product = await getCatalogProduct(slug);
-  return product ? { title: product.name, description: product.shortDescription } : {};
+  if (!product) return {};
+  return {
+    title: product.name,
+    description: product.shortDescription,
+    openGraph: {
+      type: "website",
+      url: `/products/${product.slug}/`,
+      title: product.name,
+      description: product.shortDescription,
+      images: product.images[0] ? [{ url: shareImage(product.images[0]), alt: product.name }] : [],
+    },
+  };
 }
 
 export default async function ProductPage({ params }: PageProps<"/products/[slug]">) {
@@ -34,6 +51,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
   const t = await getTranslations("products.detail");
   const tr = await getTranslations("products.reviews");
   const { summary, reviews } = await getProductReviews(product.slug);
+  const payments = await getPaymentSettings();
 
   const others = (await getCatalog()).filter((p) => p.slug !== product.slug);
 
@@ -83,7 +101,12 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               ))}
             </ul>
 
-            <AddToCart slug={product.slug} inStock={product.inStock} stock={product.stock} />
+            <AddToCart
+              slug={product.slug}
+              inStock={product.inStock}
+              stock={product.stock}
+              whatsappMessage={payments.whatsapp ? payments.whatsappMessage : null}
+            />
 
             <div className="mt-12 divide-y divide-chocolate/10 border-y border-chocolate/10">
               <details className="group py-5" open>

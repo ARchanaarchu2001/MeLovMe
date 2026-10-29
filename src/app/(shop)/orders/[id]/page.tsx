@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import CancelOrderButton from "@/components/CancelOrderButton";
 import OrderSummary from "@/components/OrderSummary";
+import OrderTracker from "@/components/OrderTracker";
 import { formatPrice } from "@/lib/format";
+import { customerCancellable, isPlaced, refundState } from "@/lib/order";
 import { getDb } from "@/lib/server/db";
 import { requireUser } from "@/lib/server/session";
 
@@ -19,37 +22,50 @@ export default async function OrderPage({ params }: PageProps<"/orders/[id]">) {
   const order = await (await getDb()).orders.findOne({ _id: id, userId: user._id });
   if (!order) notFound();
 
-  const paid = order.status === "paid";
+  // Paid online, or placed with cash on delivery (still "cod" until the cash is collected)
+  const placed = isPlaced(order.status);
+  const cod = order.paymentMethod === "cod";
   const a = order.address;
   const t = await getTranslations("account");
+  const refund = refundState(order);
 
   return (
     <section className="mx-auto max-w-2xl px-5 py-12 md:py-20">
       <div className="text-center">
-        <p className="eyebrow">{paid ? t("order.eyebrowPaid") : t("order.eyebrowPending")}</p>
-        <h1 className="mt-4 text-4xl font-light md:text-5xl">{paid ? t("order.titlePaid") : t("order.titlePending")}</h1>
+        <p className="eyebrow">{placed ? t("order.eyebrowPaid") : t("order.eyebrowPending")}</p>
+        <h1 className="mt-4 text-4xl font-light md:text-5xl">
+          {cod ? t("order.titleCod") : placed ? t("order.titlePaid") : t("order.titlePending")}
+        </h1>
         <p className="mt-6 text-sm uppercase tracking-[0.2em] text-chocolate/60">{t("order.orderId")}</p>
         <p className="mt-1 text-2xl font-medium text-gold">{order._id}</p>
         <p className="mt-6 leading-relaxed text-chocolate/75">
-          {paid
-            ? t("order.paidText", { amount: formatPrice(order.total), phone: a.phone })
-            : t("order.pendingText")}
+          {order.status === "cod"
+            ? t("order.codText", { amount: formatPrice(order.total), phone: a.phone })
+            : placed
+              ? t(cod ? "order.codPaidText" : "order.paidText", { amount: formatPrice(order.total), phone: a.phone })
+              : t("order.pendingText")}
         </p>
-        {paid && (
-          <div className="mt-8 inline-block rounded-2xl border border-chocolate/15 px-6 py-4 text-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-chocolate/60">{t("order.status")}</p>
-            <p className={`mt-1 font-medium ${order.fulfillment === "cancelled" ? "text-red-700" : ""}`}>
-              {t(`status.${order.fulfillment ?? "placed"}`)}
-            </p>
-            {order.trackingNumber && (
-              <p className="mt-2 text-chocolate/75">
-                {order.courier ? `${order.courier} · ` : ""}
-                {t("order.tracking", { number: order.trackingNumber })}
-              </p>
-            )}
-          </div>
+        {refund.refunded > 0 && (
+          <p className="mx-auto mt-4 max-w-md rounded-2xl bg-sky-700/10 px-5 py-3 text-sm text-sky-900">
+            {refund.pending
+              ? t("order.refundInitiated", { amount: formatPrice(refund.refunded) })
+              : t("order.refunded", { amount: formatPrice(refund.refunded) })}
+          </p>
         )}
       </div>
+
+      {placed && (
+        <OrderTracker
+          status={order.fulfillment ?? "placed"}
+          // COD orders are placed when created; online ones when the payment came in
+          placedAt={order.paidAt && !cod ? order.paidAt : order.createdAt}
+          history={order.statusHistory ?? []}
+          courier={order.courier}
+          trackingNumber={order.trackingNumber}
+        />
+      )}
+      {/* Until it ships, the customer can cancel it themselves */}
+      {placed && customerCancellable(order.fulfillment) && <CancelOrderButton orderId={order._id} paidOnline={order.status === "paid" && !cod} />}
 
       <div className="mt-12 grid gap-8 rounded-[2rem] bg-ivory p-8 sm:grid-cols-2">
         <div>

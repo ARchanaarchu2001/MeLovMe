@@ -12,14 +12,14 @@ import QtyStepper from "./QtyStepper";
 import RemoveItemDialog from "./RemoveItemDialog";
 import Price from "./Price";
 import { maxQtyFor, offerStatus, type Product } from "@/lib/product";
-import { MAX_QTY, setQty, useCart } from "@/lib/cart";
+import { MAX_QTY, setQty, setSelected, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
 
 export default function CartView() {
   const t = useTranslations("cart");
   const router = useRouter();
-  const { ready, lines, outOfStock, subtotal, shipping, total } = useCart();
+  const { ready, lines, selected, outOfStock, subtotal, shipping, total } = useCart();
   // The product whose dustbin was clicked, while the "remove item?" dialog is open
   const [removing, setRemoving] = useState<Product | null>(null);
 
@@ -37,94 +37,123 @@ export default function CartView() {
 
   return (
     <div className="grid gap-12 lg:grid-cols-[1fr_22rem]">
-      <ul className="divide-y divide-chocolate/10 border-y border-chocolate/10">
-        {lines.map(({ product, qty, total, comboSaving }) => (
-          <li key={product.slug} className="flex gap-5 py-6">
-            <Link
-              href={`/products/${product.slug}/`}
-              className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-ivory sm:h-28 sm:w-28"
-            >
-              <Image src={product.images[0]} alt={product.name} fill sizes="112px" className="object-cover" />
-            </Link>
-            <div className="flex flex-1 flex-col justify-between gap-3">
-              <div className="flex items-start justify-between gap-4">
+      <div>
+        {lines.length > 0 && (
+          <div className="flex items-center justify-between gap-4 pb-4 text-sm">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                checked={selected.length === lines.length}
+                // Shows a dash when only some are selected
+                ref={(el) => {
+                  if (el) el.indeterminate = selected.length > 0 && selected.length < lines.length;
+                }}
+                onChange={(e) => setSelected(lines.map((l) => l.product.slug), e.target.checked)}
+                className="h-4 w-4 cursor-pointer accent-gold"
+              />
+              {t("selectAll")}
+            </label>
+            <span className="text-chocolate/60">{t("selectedCount", { count: selected.length, total: lines.length })}</span>
+          </div>
+        )}
+        <ul className="divide-y divide-chocolate/10 border-y border-chocolate/10">
+          {lines.map(({ product, qty, total, comboSaving, selected: picked }) => (
+            <li key={product.slug} className={`flex items-center gap-4 py-6 transition-opacity sm:gap-5 ${picked ? "" : "opacity-60"}`}>
+              <input
+                type="checkbox"
+                checked={picked}
+                onChange={(e) => setSelected([product.slug], e.target.checked)}
+                aria-label={t("selectLabel", { name: product.name })}
+                className="h-4 w-4 shrink-0 cursor-pointer accent-gold"
+              />
+              <Link
+                href={`/products/${product.slug}/`}
+                className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-ivory sm:h-28 sm:w-28"
+              >
+                <Image src={product.images[0]} alt={product.name} fill sizes="112px" className="object-cover" />
+              </Link>
+              <div className="flex flex-1 flex-col justify-between gap-3 self-stretch">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <Link href={`/products/${product.slug}/`} className="font-medium hover:text-gold">
+                      {product.name}
+                    </Link>
+                    <p className="mt-1 text-sm text-chocolate/60">
+                      {product.size} · <Price product={product} showBadge={false} />
+                    </p>
+                    {comboSaving > 0 && (
+                      <p className="mt-1.5 inline-block rounded-full bg-green-700/10 px-2.5 py-0.5 text-xs text-green-800">
+                        {t("comboSaving", { amount: formatPrice(comboSaving) })}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-right font-medium text-gold">
+                    {formatPrice(total)}
+                    {comboSaving > 0 && <s className="block text-xs font-normal text-chocolate/50">{formatPrice(total + comboSaving)}</s>}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <QtyStepper qty={qty} max={maxQtyFor(product, MAX_QTY)} onChange={(q) => setQty(product.slug, q)} />
+                  <button
+                    type="button"
+                    onClick={() => setRemoving(product)}
+                    aria-label={t("removeLabel", { name: product.name })}
+                    title={t("remove")}
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-chocolate/60 transition-colors hover:bg-red-700/10 hover:text-red-700"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+          {outOfStock.map((product) => (
+            <li key={product.slug} className="flex gap-4 py-6 pl-8 sm:gap-5 sm:pl-9">
+              <Link
+                href={`/products/${product.slug}/`}
+                className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-ivory opacity-50 sm:h-28 sm:w-28"
+              >
+                <Image src={product.images[0]} alt={product.name} fill sizes="112px" className="object-cover" />
+              </Link>
+              <div className="flex flex-1 flex-col justify-between gap-3">
                 <div>
-                  <Link href={`/products/${product.slug}/`} className="font-medium hover:text-gold">
+                  <Link href={`/products/${product.slug}/`} className="font-medium text-chocolate/60 hover:text-gold">
                     {product.name}
                   </Link>
-                  <p className="mt-1 text-sm text-chocolate/60">
-                    {product.size} · <Price product={product} showBadge={false} />
-                  </p>
-                  {comboSaving > 0 && (
-                    <p className="mt-1.5 inline-block rounded-full bg-green-700/10 px-2.5 py-0.5 text-xs text-green-800">
-                      {t("comboSaving", { amount: formatPrice(comboSaving) })}
-                    </p>
-                  )}
+                  <p className="mt-1 text-sm text-chocolate/60">{product.size}</p>
                 </div>
-                <p className="text-right font-medium text-gold">
-                  {formatPrice(total)}
-                  {comboSaving > 0 && <s className="block text-xs font-normal text-chocolate/50">{formatPrice(total + comboSaving)}</s>}
-                </p>
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full bg-red-700/10 px-4 py-1.5 text-xs uppercase tracking-[0.15em] text-red-800">
+                    {t("outOfStock")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRemoving(product)}
+                    aria-label={t("removeLabel", { name: product.name })}
+                    title={t("remove")}
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-chocolate/60 transition-colors hover:bg-red-700/10 hover:text-red-700"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <QtyStepper qty={qty} max={maxQtyFor(product, MAX_QTY)} onChange={(q) => setQty(product.slug, q)} />
-                <button
-                  type="button"
-                  onClick={() => setRemoving(product)}
-                  aria-label={t("removeLabel", { name: product.name })}
-                  title={t("remove")}
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-chocolate/60 transition-colors hover:bg-red-700/10 hover:text-red-700"
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-          </li>
-        ))}
-        {outOfStock.map((product) => (
-          <li key={product.slug} className="flex gap-5 py-6">
-            <Link
-              href={`/products/${product.slug}/`}
-              className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-ivory opacity-50 sm:h-28 sm:w-28"
-            >
-              <Image src={product.images[0]} alt={product.name} fill sizes="112px" className="object-cover" />
-            </Link>
-            <div className="flex flex-1 flex-col justify-between gap-3">
-              <div>
-                <Link href={`/products/${product.slug}/`} className="font-medium text-chocolate/60 hover:text-gold">
-                  {product.name}
-                </Link>
-                <p className="mt-1 text-sm text-chocolate/60">{product.size}</p>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="rounded-full bg-red-700/10 px-4 py-1.5 text-xs uppercase tracking-[0.15em] text-red-800">
-                  {t("outOfStock")}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setRemoving(product)}
-                  aria-label={t("removeLabel", { name: product.name })}
-                  title={t("remove")}
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-chocolate/60 transition-colors hover:bg-red-700/10 hover:text-red-700"
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <aside className="h-fit rounded-[2rem] bg-ivory p-8">
         <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">{t("orderSummary")}</h2>
         <OrderSummary subtotal={subtotal} shipping={shipping} total={total} />
         {outOfStock.length > 0 && <p className="mt-6 text-xs text-chocolate/60">{t("outOfStockNote")}</p>}
+        {lines.length > 0 && selected.length === 0 && <p className="mt-6 text-xs text-chocolate/60">{t("noneSelected")}</p>}
         {lines.length > 0 && (
           <PayButton
             className="mt-8"
             // Only when something in the cart is actually on offer (a running offer or a combo price)
-            tag={lines.some((l) => l.comboSaving > 0 || offerStatus(l.product.offer) === "active") ? t("limitedOffer") : undefined}
+            tag={selected.some((l) => l.comboSaving > 0 || offerStatus(l.product.offer) === "active") ? t("limitedOffer") : undefined}
             onClick={() => router.push("/checkout/")}
+            disabled={selected.length === 0}
           >
             {t("checkout")}
           </PayButton>

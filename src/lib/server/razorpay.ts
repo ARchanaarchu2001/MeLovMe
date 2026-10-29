@@ -90,6 +90,39 @@ export async function fetchPaymentDetails(paymentId: string): Promise<PaymentDet
   return details;
 }
 
+function authHeader() {
+  const keyId = razorpayKeyId();
+  const secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keyId || !secret) throw new Error("RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET is not set");
+  return `Basic ${Buffer.from(`${keyId}:${secret}`).toString("base64")}`;
+}
+
+type RazorpayRefund = { id?: string; status?: "pending" | "processed" | "failed"; error?: { description?: string } };
+
+// Refunds part or all of a payment (https://razorpay.com/docs/api/refunds/create-normal/).
+// `amount` is in rupees. The money comes from the Razorpay balance and reaches the customer in
+// 5–7 working days; `receipt` stops the same refund being made twice.
+export async function createRefund(paymentId: string, amount: number, receipt: string) {
+  const res = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}/refund`, {
+    method: "POST",
+    headers: { Authorization: authHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ amount: Math.round(amount * 100), speed: "normal", receipt }),
+  });
+  const data = (await res.json().catch(() => null)) as RazorpayRefund | null;
+  if (!res.ok || !data?.id || !data.status) throw new Error(data?.error?.description ?? `Razorpay refund failed (${res.status})`);
+  return { id: data.id, status: data.status };
+}
+
+// The latest status of a refund, for when the webhook hasn't reported it (e.g. while testing locally)
+export async function fetchRefundStatus(refundId: string) {
+  const res = await fetch(`https://api.razorpay.com/v1/refunds/${encodeURIComponent(refundId)}`, {
+    headers: { Authorization: authHeader() },
+  });
+  const data = (await res.json().catch(() => null)) as RazorpayRefund | null;
+  if (!res.ok || !data?.status) throw new Error(`Razorpay refund lookup failed: ${res.status}`);
+  return data.status;
+}
+
 // Proof from the browser that the customer paid: Razorpay signs "<order id>|<payment id>"
 // with our key secret, which only Razorpay and our server know.
 export function isValidPaymentSignature(razorpayOrderId: string, paymentId: string, signature: unknown) {

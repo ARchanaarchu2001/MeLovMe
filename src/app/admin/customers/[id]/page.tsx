@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ObjectId } from "mongodb";
 import { AdminBadge, FulfillmentBadge, PaymentBadge, formatDate, formatDateTime } from "@/components/admin/ui";
 import { formatPrice } from "@/lib/format";
+import { isPlaced } from "@/lib/order";
 import { getDb } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/session";
 
@@ -21,7 +22,8 @@ export default async function AdminCustomerPage({ params }: PageProps<"/admin/cu
   const user = await users.findOne({ _id: new ObjectId(id) });
   if (!user) notFound();
   const list = await orders.find({ userId: user._id }).sort({ createdAt: -1 }).limit(100).toArray();
-  const paid = list.filter((o) => o.status === "paid");
+  // Real orders: paid online, or placed with cash on delivery
+  const paid = list.filter((o) => isPlaced(o.status));
 
   return (
     <div>
@@ -35,7 +37,7 @@ export default async function AdminCustomerPage({ params }: PageProps<"/admin/cu
         </div>
         <p className="mt-1 text-sm text-chocolate/70">
           <a href={`tel:+91${user.phone}`} className="text-gold hover:underline">+91 {user.phone}</a> · Joined {formatDate(user.createdAt)} ·{" "}
-          {paid.length} paid order{paid.length === 1 ? "" : "s"} · {formatPrice(paid.reduce((n, o) => n + o.total, 0))} spent
+          {paid.length} order{paid.length === 1 ? "" : "s"} · {formatPrice(paid.reduce((n, o) => n + o.total, 0))} spent
         </p>
       </div>
 
@@ -57,7 +59,7 @@ export default async function AdminCustomerPage({ params }: PageProps<"/admin/cu
                   <div className="flex items-center gap-3">
                     <span className="font-medium">{formatPrice(o.total)}</span>
                     <PaymentBadge status={o.status} />
-                    {o.status === "paid" && <FulfillmentBadge status={o.fulfillment ?? "placed"} />}
+                    {isPlaced(o.status) && <FulfillmentBadge status={o.fulfillment ?? "placed"} />}
                   </div>
                 </li>
               ))}

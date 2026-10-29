@@ -29,7 +29,9 @@
       "explore": "Explore",
       "products": "Products",
       "getInTouch": "Get in touch",
-      "copyright": "© {year} MELOVME. All rights reserved."
+      "copyright": "© {year} MELOVME. All rights reserved.",
+      "policy": "Returns, Refunds & Cancellation",
+      "privacy": "Privacy Policy"
     },
     "social": {
       "instagram": "Instagram",
@@ -236,6 +238,9 @@
     },
     "addToCart": "Add to Cart",
     "buyNow": "Buy Now",
+    "buyOnWhatsapp": "Buy on WhatsApp",
+    "askOnWhatsapp": "Ask on WhatsApp",
+    "whatsappHint": "Chat with us to order or ask about this product",
     "goToCart": "Go to Cart",
     "combo": {
       "title": "Combo offers",
@@ -334,6 +339,10 @@
     "securePayment": "Secure payment by UPI, cards & netbanking",
     "outOfStock": "Out of stock",
     "outOfStockNote": "Out-of-stock items aren't included in your order.",
+    "selectAll": "Select all",
+    "selectedCount": "{count} of {total} selected",
+    "selectLabel": "Select {name} for checkout",
+    "noneSelected": "Select at least one item to check out.",
     "comboSaving": "Combo offer: you save {amount}",
     "removeDialog": {
       "close": "Close",
@@ -384,6 +393,15 @@
       "pay": "Pay {amount}",
       "securedBy": "Secured by",
       "paymentMethods": "UPI (Google Pay, PhonePe, Paytm), cards and netbanking",
+      "paymentMethod": "2. Payment Method",
+      "payOnline": "Pay online",
+      "payOnlineText": "UPI, cards or netbanking",
+      "cod": "Cash on delivery",
+      "codText": "Pay in cash when your order arrives",
+      "placeOrder": "Place Order · {amount}",
+      "codNote": "You'll pay {amount} in cash to the delivery person.",
+      "orderPlaced": "Order placed",
+      "noPaymentMethods": "Checkout isn't available right now. Please contact us to order.",
       "payment": "2. Payment",
       "completePayment": "Complete your payment of <strong>{amount}</strong> for order <strong>{id}</strong>. Pay with any UPI app — Google Pay, PhonePe, Paytm — or a card or netbanking.",
       "deliveringTo": "Delivering to: <address></address>",
@@ -392,7 +410,8 @@
       "moveToWishlist": "Move to Wishlist",
       "remove": "Remove",
       "editCart": "Edit cart",
-      "phone": "Phone: {phone}"
+      "phone": "Phone: {phone}",
+      "agreePolicy": "By placing your order, you agree to our <link>Returns, Refunds & Cancellation Policy</link>."
     },
     "address": {
       "fields": {
@@ -422,6 +441,7 @@
       "notEnoughStock": "Sorry, only {count} of {name} left. Please lower the quantity in your cart and try again.",
       "paymentStartFailed": "We couldn't start the payment right now. Please try again shortly.",
       "orderNotFound": "We couldn't find this order.",
+      "methodUnavailable": "This payment method isn't available right now. Please choose another one.",
       "paymentNotConfirmed": "We couldn't confirm your payment. If money was deducted, please contact us with order ID {id}."
     }
   },
@@ -504,6 +524,20 @@
       "eyebrowPending": "Almost there",
       "titlePaid": "Order confirmed",
       "titlePending": "Confirming payment",
+      "titleCod": "Order placed",
+      "cancel": "Cancel order",
+      "cancelHint": "Changed your mind? You can cancel until your order is shipped.",
+      "cancelTitle": "Cancel this order?",
+      "cancelText": "We won't ship it, and you won't need to pay anything. This can't be undone.",
+      "cancelTextPaid": "We won't ship it, and we'll refund your payment to the same UPI, card or bank account. This can't be undone.",
+      "cancelConfirm": "Yes, cancel order",
+      "cancelling": "Cancelling…",
+      "keepOrder": "Keep my order",
+      "cantCancel": "This order can't be cancelled any more, as it has already been shipped.",
+      "codText": "Please keep {amount} ready in cash for the delivery person. We'll send you updates on +91 {phone}.",
+      "codPaidText": "We've received your cash payment of {amount}. Thank you!",
+      "refundInitiated": "A refund of {amount} is on its way. It reaches your account in 5–7 working days.",
+      "refunded": "{amount} has been refunded to your account.",
       "orderId": "Order ID",
       "paidText": "We've received your payment of {amount}. We'll send you updates on +91 {phone}.",
       "pendingText": "We haven't received confirmation of your payment yet. This usually takes a few seconds — refresh this page shortly. If money was deducted and this doesn't update, contact us with your order ID.",
@@ -521,6 +555,143 @@
       "shipped": "Shipped",
       "delivered": "Delivered",
       "cancelled": "Cancelled"
+    },
+    "tracker": {
+      "headline": {
+        "placed": "We've received your order and will pack it soon",
+        "packed": "Your order is packed and ready to ship",
+        "shipped": "Your order is on its way",
+        "delivered": "Your order has been delivered. Enjoy!"
+      },
+      "done": "done",
+      "current": "current step",
+      "upcoming": "coming up",
+      "cancelledTitle": "This order was cancelled",
+      "cancelledText": "If you paid online, any refund is shown above. Contact us if you have questions."
+    }
+  },
+  "policy": {
+    "meta": {
+      "title": "Returns, Refunds & Cancellation Policy",
+      "description": "How shipping, cancellations, returns and refunds work at MELOVME."
+    },
+    "eyebrow": "Shop with confidence",
+    "title": "Returns, Refunds & Cancellation",
+    "intro": "At MELOVME, we want every order to feel as good as the products inside it. Here is exactly how shipping, cancellations, returns and refunds work, so you always know what to expect.",
+    "updated": "Last updated: {date}",
+    "sections": {
+      "shipping": {
+        "title": "Shipping",
+        "points": [
+          "Every order is carefully packed and dispatched within 2–3 business days.",
+          "Delivery times depend on your location and our courier partners.",
+          "You can follow your order anytime in <orders>My Orders</orders>. Once it ships, your tracking number appears there too."
+        ]
+      },
+      "cancellation": {
+        "title": "Cancellation",
+        "points": [
+          "You can cancel your order anytime before it is shipped: open it in <orders>My Orders</orders> and tap “Cancel order”.",
+          "Once an order has been shipped, it can no longer be cancelled.",
+          "Paid online? We refund the full amount to your original payment method. Cash on delivery? There's nothing to pay."
+        ]
+      },
+      "returns": {
+        "title": "Returns & Replacements",
+        "points": [
+          "For hygiene and safety, body care products can't be returned once delivered, unless they arrive damaged, leaking or incorrect.",
+          "If something is wrong with your order, tell us within 48 hours of delivery, with your order number and photos.",
+          "An unboxing video, recorded from opening the sealed package, is required for any claim of missing, leaking, broken or incorrect items.",
+          "Once we verify your claim, we send you a replacement at no extra cost. Incorrect items must be unused, in their original packaging."
+        ]
+      },
+      "refunds": {
+        "title": "Refunds",
+        "points": [
+          "Refunds apply to orders cancelled before shipping and are made to your original payment method only (UPI, card or bank account).",
+          "Once we start a refund, it usually reaches your account in 5–7 business days, depending on your bank.",
+          "Delivered orders are not refunded; damaged, leaking or incorrect items are replaced instead (see Returns & Replacements).",
+          "Cash on delivery orders cancelled before shipping are never charged, so there is nothing to refund."
+        ]
+      }
+    },
+    "contact": {
+      "title": "Need help?",
+      "text": "For cancellations, returns or refunds, reach out with your order number and a short description of the issue. We're happy to help.",
+      "email": "Email us",
+      "whatsapp": "WhatsApp us",
+      "whatsappMessage": "Hi MELOVME! I need help with my order (order number: ).",
+      "orders": "My Orders"
+    }
+  },
+  "privacy": {
+    "meta": {
+      "title": "Privacy Policy",
+      "description": "What personal information MELOVME collects, how it is used and protected, and your choices."
+    },
+    "eyebrow": "Your trust matters",
+    "title": "Privacy Policy",
+    "intro": "We only ask for what we need to get your order to you, and we treat it with care. This page explains what we collect, why, who helps us handle it, and the choices you have.",
+    "updated": "Last updated: {date}",
+    "sections": {
+      "collect": {
+        "title": "What we collect",
+        "points": [
+          "Your mobile number, to log you in with a one-time code (OTP) sent by SMS.",
+          "Your name and delivery addresses, to deliver your orders and contact you about them.",
+          "Your orders: what you bought, the amount, how you paid (for example UPI or card) and the delivery status.",
+          "Reviews you write, shown with the name you choose, and messages you send us through the contact form (name, email, phone and message)."
+        ]
+      },
+      "use": {
+        "title": "How we use it",
+        "points": [
+          "To process, pack, deliver and support your orders, including cancellations, replacements and refunds.",
+          "To send you updates about your orders by phone or WhatsApp, and to reply to your messages.",
+          "To keep your account secure and prevent fraud.",
+          "We never sell your personal information, and we don't use it for third-party advertising."
+        ]
+      },
+      "payments": {
+        "title": "Payments",
+        "points": [
+          "Online payments are handled securely by Razorpay, our payment gateway.",
+          "We never see or store your card number, CVV, UPI PIN or bank login details.",
+          "We keep only the payment reference and method (for example “PhonePe · UPI”), to match payments to orders and to make refunds."
+        ]
+      },
+      "sharing": {
+        "title": "Who we share it with",
+        "points": [
+          "Only the services we need to run the shop: our delivery partners (your name, address and phone, to deliver your order), Razorpay (payments), Firebase by Google (login codes), MongoDB Atlas (our secure database, hosted in India) and EmailJS (contact form messages).",
+          "If you choose to chat with us on WhatsApp, those messages are handled by WhatsApp under its own privacy policy.",
+          "We may share information if the law requires us to."
+        ]
+      },
+      "cookies": {
+        "title": "Cookies & your browser",
+        "points": [
+          "We use one essential cookie to keep you logged in. We don't use advertising or tracking cookies.",
+          "Your cart and wishlist are saved in your own browser, not on our servers, so they stay on your device."
+        ]
+      },
+      "rights": {
+        "title": "Your choices & rights",
+        "points": [
+          "You can see and update your name in your profile, and your delivery addresses at checkout, at any time.",
+          "You can ask us for a copy of your information, to correct it, or to delete your account. We keep order records for as long as the law requires for tax and accounting.",
+          "We handle your information in line with applicable Indian law, including the Digital Personal Data Protection Act, 2023.",
+          "If we change this policy, we'll update it here and change the date at the top of this page."
+        ]
+      }
+    },
+    "contact": {
+      "title": "Questions about your data?",
+      "text": "Write to us about your information or privacy, and we'll get back to you as soon as we can.",
+      "email": "Email us",
+      "whatsapp": "WhatsApp us",
+      "whatsappMessage": "Hi MELOVME! I have a question about my data and privacy.",
+      "orders": "My Orders"
     }
   }
 }

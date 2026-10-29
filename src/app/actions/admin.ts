@@ -18,12 +18,17 @@ import {
   type ProductInput,
 } from "@/lib/admin-validation";
 import { announcementSpeeds, type Announcement, type AnnouncementMessage } from "@/lib/announcement";
+import { formatPrice } from "@/lib/format";
+import { placedStatuses, refundState, type Refund } from "@/lib/order";
+import { validatePaymentSettings, type PaymentSettings, type PaymentSettingsErrors } from "@/lib/payments";
 import type { Product } from "@/lib/product";
 import type { ReviewInput } from "@/lib/review";
 import { refreshAnnouncement } from "@/lib/server/announcement";
 import { cloudinaryCloudName } from "@/lib/server/cloudinary";
 import { getDb } from "@/lib/server/db";
+import { refreshPaymentSettings } from "@/lib/server/payments";
 import { adjustStock, refreshCatalog } from "@/lib/server/products";
+import { createRefund } from "@/lib/server/razorpay";
 import { cleanReview, refreshReviews } from "@/lib/server/reviews";
 import { requireAdmin } from "@/lib/server/session";
 
@@ -49,8 +54,8 @@ export async function updateOrder(
 
   const { orders } = await getDb();
   const before = await orders.findOneAndUpdate(
-    // Only paid orders have a delivery status
-    { _id: String(orderId), status: "paid" },
+    // Only placed orders (paid, or cash on delivery) have a delivery status
+    { _id: String(orderId), status: { $in: [...placedStatuses] } },
     {
       $set: {
         fulfillment: values.fulfillment,
@@ -62,11 +67,75 @@ export async function updateOrder(
     },
     { returnDocument: "before" },
   );
-  if (!before) return { error: "Only paid orders can be updated." };
+  if (!before) return { error: "Only placed orders can be updated." };
+  // Remember when the delivery status changed, for the customer's tracker
+  if ((before.fulfillment ?? "placed") !== values.fulfillment) {
+    await orders.updateOne({ _id: before._id }, { $push: { statusHistory: { status: values.fulfillment, at: new Date() } } });
+  }
   // Cancelling puts the items back in stock; un-cancelling takes them out again
   const wasCancelled = before.fulfillment === "cancelled";
   const isCancelled = values.fulfillment === "cancelled";
   if (before.stockTaken && wasCancelled !== isCancelled) await adjustStock(before.items, isCancelled ? 1 : -1);
+  return { ok: true };
+}
+
+// Cash on delivery: the courier collected the cash, so the order is now paid
+export async function markCodPaid(orderId: string): Promise<{ error: string } | { ok: true }> {
+  await requireAdmin();
+  const res = await (await getDb()).orders.updateOne(
+    { _id: String(orderId), status: "cod" },
+    { $set: { status: "paid", paidAt: new Date(), payment: { method: "cod" }, updatedAt: new Date() } },
+  );
+  return res.matchedCount ? { ok: true } : { error: "This order isn't waiting for cash on delivery." };
+}
+
+// Refunds part or all of an online payment through Razorpay, until the order is delivered.
+// Only the refund's status is recorded: the order's delivery status and stock are left as they are.
+export async function refundOrder(orderId: string, amount: number): Promise<{ error: string } | { ok: true }> {
+  await requireAdmin();
+  const { orders } = await getDb();
+  const order = await orders.findOne({ _id: String(orderId) });
+  if (!order || order.status !== "paid" || order.paymentMethod === "cod" || !order.paymentId) {
+    return { error: "Only orders paid online can be refunded here. Cash on delivery refunds are made by hand." };
+  }
+  if (order.fulfillment === "delivered") return { error: "Refunds aren't available once an order is delivered." };
+  const { refundable } = refundState(order);
+  if (!Number.isInteger(amount) || amount < 1) return { error: "Enter the amount to refund, in whole rupees." };
+  if (amount > refundable) return { error: `You can refund up to ${formatPrice(refundable)}.` };
+
+  let refund: { id: string; status: Refund["status"] };
+  try {
+    // A receipt per refund (order ID + number) stops a double click refunding twice
+    refund = await createRefund(order.paymentId, amount, `${order._id}-R${(order.refunds?.length ?? 0) + 1}`);
+  } catch (err) {
+    return { error: `Razorpay couldn't make the refund: ${err instanceof Error ? err.message : "please try again"}` };
+  }
+  const now = new Date();
+  await orders.updateOne(
+    { _id: order._id },
+    { $push: { refunds: { id: refund.id, amount, status: refund.status, createdAt: now } }, $set: { updatedAt: now } },
+  );
+  return { ok: true };
+}
+
+// ---------- Payment methods ----------
+
+export async function savePaymentSettings(input: PaymentSettings): Promise<{ errors: PaymentSettingsErrors } | { ok: true }> {
+  await requireAdmin();
+  const settings: PaymentSettings = {
+    razorpay: input?.razorpay === true,
+    cod: input?.cod === true,
+    whatsapp: input?.whatsapp === true,
+    whatsappMessage: text(input?.whatsappMessage),
+  };
+  const errors = validatePaymentSettings(settings);
+  if (Object.keys(errors).length) return { errors };
+  await (await getDb()).settings.updateOne(
+    { _id: "payments" },
+    { $set: { ...settings, updatedAt: new Date() } },
+    { upsert: true },
+  );
+  refreshPaymentSettings();
   return { ok: true };
 }
 

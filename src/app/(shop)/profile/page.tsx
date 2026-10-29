@@ -6,6 +6,7 @@ import ProfileForm from "@/components/ProfileForm";
 import { logout } from "@/app/actions/auth";
 import { CartIcon, Icon } from "@/components/Icons";
 import PendingButton from "@/components/PendingButton";
+import { placedStatuses } from "@/lib/order";
 import { getDb } from "@/lib/server/db";
 import { requireUser } from "@/lib/server/session";
 
@@ -17,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ProfilePage() {
   const user = await requireUser("/profile/");
   const t = await getTranslations("account");
-  const orderCount = await (await getDb()).orders.countDocuments({ userId: user._id, status: "paid" });
+  const orderCount = await (await getDb()).orders.countDocuments({ userId: user._id, status: { $in: [...placedStatuses] } });
   const since = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" }).format(user.createdAt);
 
   return (

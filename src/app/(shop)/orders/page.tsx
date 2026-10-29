@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
+import { placedStatuses } from "@/lib/order";
 import { getDb } from "@/lib/server/db";
 import { getCatalog } from "@/lib/server/products";
 import { requireUser } from "@/lib/server/session";
@@ -18,7 +19,7 @@ const orderDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "sho
 export default async function OrdersPage() {
   const user = await requireUser("/orders/");
   const orders = await (await getDb()).orders
-    .find({ userId: user._id, status: "paid" })
+    .find({ userId: user._id, status: { $in: [...placedStatuses] } })
     .sort({ createdAt: -1 })
     .limit(50)
     .toArray();

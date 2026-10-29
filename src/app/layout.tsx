@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Poppins, Quicksand } from "next/font/google";
+import { siteUrl } from "@/data/site";
 import "./globals.css";
 
 // Poppins is the brand typeface (tagline + body text)
@@ -21,6 +22,8 @@ const quicksand = Quicksand({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("common.site");
   return {
+    // Turns relative links in metadata (e.g. a product's share image) into full addresses
+    metadataBase: new URL(siteUrl()),
     title: {
       default: `${t("name")} — ${t("tagline")}`,
       template: `%s | ${t("name")}`,

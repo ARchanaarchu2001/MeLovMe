@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Filter } from "mongodb";
 import { AdminBadge, Pagination, SearchBox, daysAgo, formatDate, searchRegex } from "@/components/admin/ui";
 import { formatPrice } from "@/lib/format";
+import { placedStatuses } from "@/lib/order";
 import { getDb, type UserDoc } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/session";
 
@@ -29,13 +30,13 @@ export default async function AdminCustomersPage({ searchParams }: PageProps<"/a
     users.countDocuments({ createdAt: { $gte: daysAgo(7) } }),
   ]);
 
-  // Paid orders and spend per customer on this page
+  // Orders (paid or cash on delivery) and spend per customer on this page
   const stats = new Map(
     (
       await orders
         .aggregate<{ _id: UserDoc["_id"]; count: number; spent: number; last: Date }>([
-          { $match: { userId: { $in: list.map((u) => u._id) }, status: "paid" } },
-          { $group: { _id: "$userId", count: { $sum: 1 }, spent: { $sum: "$total" }, last: { $max: "$paidAt" } } },
+          { $match: { userId: { $in: list.map((u) => u._id) }, status: { $in: [...placedStatuses] } } },
+          { $group: { _id: "$userId", count: { $sum: 1 }, spent: { $sum: "$total" }, last: { $max: "$createdAt" } } },
         ])
         .toArray()
     ).map((s) => [s._id.toHexString(), s]),

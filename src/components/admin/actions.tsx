@@ -65,13 +65,15 @@ export const EyeOffIcon = ({ className = "h-4 w-4" }) => (
 
 // "Delete this …?" in the shop's style. A native <dialog>: Escape closes it and focus stays
 // inside while it's open. Cancel has focus, so Enter doesn't delete by accident.
-export function ConfirmDialog({ title, subject, image, text, confirmLabel, pendingLabel, pending, onConfirm, onClose }: {
+export function ConfirmDialog({ title, subject, image, icon, text, confirmLabel, pendingLabel, cancelLabel = "Cancel", pending, onConfirm, onClose }: {
   title: string;
   subject?: string; // e.g. the product's name, under the title
   image?: string;
+  icon?: ReactNode; // shown when there's no image (a bin by default)
   text: string;
   confirmLabel: string;
   pendingLabel: string;
+  cancelLabel?: string; // the button that closes it without doing anything
   pending: boolean;
   onConfirm: () => void;
   onClose: () => void;
@@ -108,7 +110,7 @@ export function ConfirmDialog({ title, subject, image, text, confirmLabel, pendi
 
         <div className="flex items-center gap-4 pr-8">
           <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-red-700/10 text-red-700">
-            {image ? <Image src={image} alt="" fill sizes="64px" className="object-cover" /> : <TrashIcon className="h-6 w-6" />}
+            {image ? <Image src={image} alt="" fill sizes="64px" className="object-cover" /> : (icon ?? <TrashIcon className="h-6 w-6" />)}
           </div>
           <div className="min-w-0">
             <h2 id="confirm-title" className="font-medium">{title}</h2>
@@ -124,7 +126,7 @@ export function ConfirmDialog({ title, subject, image, text, confirmLabel, pendi
             {pending ? pendingLabel : confirmLabel}
           </button>
           <button type="button" onClick={() => ref.current?.close()} disabled={pending} className="btn btn-outline w-full" autoFocus>
-            Cancel
+            {cancelLabel}
           </button>
         </div>
       </div>

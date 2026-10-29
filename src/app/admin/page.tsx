@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FulfillmentBadge, Stat, daysAgo, formatDateTime, startOfTodayIndia } from "@/components/admin/ui";
+import { FulfillmentBadge, PaymentBadge, Stat, daysAgo, formatDateTime, startOfTodayIndia } from "@/components/admin/ui";
 import { formatPrice } from "@/lib/format";
+import { placedStatuses } from "@/lib/order";
 import { getDb, type OrderDoc } from "@/lib/server/db";
+import { netOfRefunds } from "@/lib/server/orders";
 import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -19,24 +21,25 @@ export default async function AdminDashboard() {
     orders
       .aggregate<{ total: number; count: number }>([
         { $match: { ...sales, paidAt: { $gte: since } } },
-        { $group: { _id: null, total: { $sum: "$total" }, count: { $sum: 1 } } },
+        { $group: { _id: null, total: { $sum: netOfRefunds }, count: { $sum: 1 } } },
       ])
       .toArray()
       .then((r) => r[0] ?? { total: 0, count: 0 });
 
-  // Paid orders not yet shipped
-  const toShipFilter = { status: "paid" as const, fulfillment: { $in: ["placed" as const, "packed" as const] } };
+  // Placed orders (paid, or cash on delivery) not yet shipped
+  const placed = { $in: [...placedStatuses] };
+  const toShipFilter = { status: placed, fulfillment: { $in: ["placed" as const, "packed" as const] } };
 
   const [todaySales, monthSales, toShip, toShipCount, newCustomers, totalCustomers, productsOn, productsAll, recent] = await Promise.all([
     sumTotal(today),
     sumTotal(monthAgo),
-    orders.find(toShipFilter).sort({ paidAt: -1 }).limit(10).toArray(),
+    orders.find(toShipFilter).sort({ createdAt: -1 }).limit(10).toArray(),
     orders.countDocuments(toShipFilter),
     users.countDocuments({ createdAt: { $gte: daysAgo(7) } }),
     users.countDocuments(),
     products.countDocuments({ enabled: true }),
     products.countDocuments(),
-    orders.find({ status: "paid" }).sort({ paidAt: -1 }).limit(8).toArray(),
+    orders.find({ status: placed }).sort({ createdAt: -1 }).limit(8).toArray(),
   ]);
 
   return (
@@ -44,7 +47,7 @@ export default async function AdminDashboard() {
       <p className="text-chocolate/70">Welcome back, {me.name}.</p>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="To ship" value={String(toShipCount)} note="Paid, not yet shipped" href="/admin/orders/?view=paid" />
+        <Stat label="To ship" value={String(toShipCount)} note="Paid or cash on delivery, not yet shipped" href="/admin/orders/?view=orders" />
         <Stat label="Today" value={formatPrice(todaySales.total)} note={`${todaySales.count} order${todaySales.count === 1 ? "" : "s"}`} />
         <Stat label="Last 30 days" value={formatPrice(monthSales.total)} note={`${monthSales.count} order${monthSales.count === 1 ? "" : "s"}`} />
         <Stat label="Customers" value={String(totalCustomers)} note={`${newCustomers} new this week`} href="/admin/customers/" />
@@ -54,7 +57,7 @@ export default async function AdminDashboard() {
         <section className="rounded-2xl border border-chocolate/15 p-6">
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-xs uppercase tracking-[0.2em] text-chocolate/60">Needs shipping</h2>
-            <Link href="/admin/orders/?view=paid" className="text-xs uppercase tracking-[0.15em] text-gold hover:underline">All orders</Link>
+            <Link href="/admin/orders/?view=orders" className="text-xs uppercase tracking-[0.15em] text-gold hover:underline">All orders</Link>
           </div>
           {toShip.length === 0 ? (
             <p className="py-6 text-center text-sm text-chocolate/60">Nothing to ship right now.</p>
@@ -103,6 +106,7 @@ function OrderRows({ orders }: { orders: OrderDoc[] }) {
             </span>
             <span className="flex items-center gap-3">
               <span className="font-medium">{formatPrice(o.total)}</span>
+              {o.status === "cod" && <PaymentBadge status="cod" />}
               <FulfillmentBadge status={o.fulfillment ?? "placed"} />
             </span>
           </Link>

@@ -20,7 +20,7 @@ export function shippingFor(subtotal: number) {
   return subtotal >= site.shipping.freeAbove ? 0 : site.shipping.fee;
 }
 
-// An order as the checkout page sees it
+// An order as the checkout page sees it while the customer pays online
 export type Order = {
   id: string;
   address: Address;
@@ -30,6 +30,35 @@ export type Order = {
   total: number;
   razorpayOrderId: string;
 };
+
+export const paymentMethods = ["razorpay", "cod"] as const;
+export type PaymentMethod = (typeof paymentMethods)[number];
+
+export type OrderStatus = "awaiting_payment" | "cod" | "paid";
+// Real orders, to pack and ship: paid online, or placed with cash on delivery
+export const placedStatuses = ["paid", "cod"] as const satisfies readonly OrderStatus[];
+export const isPlaced = (status: OrderStatus) => (placedStatuses as readonly string[]).includes(status);
+
+// A refund made through Razorpay. `amount` in rupees. Razorpay reports "pending" until the money
+// is on its way back ("processed"), or "failed".
+export type Refund = { id: string; amount: number; status: "pending" | "processed" | "failed"; createdAt: Date; updatedAt?: Date };
+
+// Where an order's refunds stand: how much is refunded or on its way, and what's left to refund
+export function refundState(order: { total: number; refunds?: Refund[] }) {
+  const live = (order.refunds ?? []).filter((r) => r.status !== "failed");
+  const refunded = live.reduce((sum, r) => sum + r.amount, 0);
+  const pending = live.some((r) => r.status === "pending");
+  const label = !order.refunds?.length
+    ? null
+    : pending
+      ? "Refund initiated"
+      : refunded >= order.total
+        ? "Refunded"
+        : refunded > 0
+          ? "Partly refunded"
+          : "Refund failed";
+  return { refunded, pending, refundable: Math.max(0, order.total - refunded), label };
+}
 
 export const addressFields = ["name", "phone", "address", "city", "state", "pincode"] as const;
 
@@ -48,6 +77,8 @@ export function validateAddress(a: Address) {
 // Where a paid order is, as set by the shop in /admin/orders
 export const fulfillments = ["placed", "packed", "shipped", "delivered", "cancelled"] as const;
 export type Fulfillment = (typeof fulfillments)[number];
+// Customers can cancel an order themselves until it ships
+export const customerCancellable = (fulfillment: Fulfillment | undefined) => (fulfillment ?? "placed") === "placed" || fulfillment === "packed";
 export const fulfillmentLabels: Record<Fulfillment, string> = {
   placed: "Order placed",
   packed: "Packed",

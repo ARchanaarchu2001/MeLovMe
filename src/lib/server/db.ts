@@ -2,7 +2,8 @@ import "server-only";
 import { MongoClient, type Db, type ObjectId } from "mongodb";
 import { seedProducts } from "@/data/seed-products";
 import type { Announcement } from "@/lib/announcement";
-import type { Address, Fulfillment } from "@/lib/order";
+import type { Address, Fulfillment, OrderStatus, Refund } from "@/lib/order";
+import type { PaymentSettings } from "@/lib/payments";
 import type { Product } from "@/lib/product";
 import type { PaymentDetails } from "./razorpay";
 
@@ -32,13 +33,21 @@ export type OrderDoc = {
   subtotal: number;
   shipping: number;
   total: number;
-  status: "awaiting_payment" | "paid";
-  razorpayOrderId: string; // the Razorpay order the customer pays against
+  // "awaiting_payment": online payment started, not finished. "cod": placed with cash on delivery,
+  // cash not collected yet. "paid": money received (online, or COD marked as collected).
+  status: OrderStatus;
+  paymentMethod?: "razorpay" | "cod"; // missing on orders from before COD existed (all Razorpay)
+  razorpayOrderId?: string; // the Razorpay order the customer pays against (online payments only)
   paymentId?: string; // Razorpay payment ID, once paid
   paidAt?: Date;
   payment?: PaymentDetails; // how it was paid (method, UPI app, UTR...), looked up from Razorpay once paid
+  refunds?: Refund[]; // refunds made from /admin/orders, through Razorpay
   // Set by the shop in /admin/orders once the order is paid
   fulfillment?: Fulfillment;
+  // When each delivery status was set, for the tracker on the customer's order page
+  // (orders from before this was added don't have it)
+  statusHistory?: { status: Fulfillment; at: Date }[];
+  cancelledBy?: "customer"; // set when the customer cancelled it from their order page
   courier?: string;
   trackingNumber?: string;
   adminNote?: string; // only visible to the shop
@@ -75,7 +84,9 @@ export type ReviewDoc = {
 };
 
 // Shop-wide settings edited in the admin area, one document each
-export type SettingsDoc = { _id: "announcement" } & Announcement & { updatedAt: Date };
+export type AnnouncementSettingsDoc = { _id: "announcement" } & Announcement & { updatedAt: Date };
+export type PaymentSettingsDoc = { _id: "payments" } & PaymentSettings & { updatedAt: Date };
+export type SettingsDoc = AnnouncementSettingsDoc | PaymentSettingsDoc;
 
 
 // Reuse one client across hot reloads in dev and across requests in prod
@@ -84,7 +95,10 @@ const globalForMongo = globalThis as unknown as { mongo?: Promise<Db> };
 async function connect() {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error("MONGODB_URI is not set — add it to .env.local");
-  const client = await new MongoClient(uri).connect();
+  // A small pool of connections that stay open: requests share them instead of opening new ones.
+  // Opening connections is slow (TLS handshake to Atlas), and shared Atlas tiers limit how many
+  // there can be and how fast they're opened. (The driver's default is up to 100.)
+  const client = await new MongoClient(uri, { maxPoolSize: 10, minPoolSize: 2, maxIdleTimeMS: 10 * 60 * 1000 }).connect();
   const db = client.db(process.env.MONGODB_DB || "melovme");
 
   // Login used to be by email: drop those old unique indexes, which would reject phone-only documents

@@ -1,17 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Filter } from "mongodb";
-import { FulfillmentBadge, Pagination, PaymentBadge, SearchBox, Stat, formatDateTime, paymentLabel, searchRegex } from "@/components/admin/ui";
+import { FulfillmentBadge, Pagination, PaymentBadge, RefundBadge, SearchBox, Stat, formatDateTime, paymentLabel, searchRegex } from "@/components/admin/ui";
 import { formatPrice } from "@/lib/format";
+import { isPlaced, placedStatuses } from "@/lib/order";
 import { getDb, type OrderDoc } from "@/lib/server/db";
+import { netOfRefunds } from "@/lib/server/orders";
 import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Orders" };
 
+const placed = { $in: [...placedStatuses] };
 const views = [
-  { key: "paid", label: "Paid", filter: { status: "paid", fulfillment: { $ne: "cancelled" } } },
+  // Paid online or placed with cash on delivery: the ones to pack and ship
+  { key: "orders", label: "Orders", filter: { status: placed, fulfillment: { $ne: "cancelled" } } },
+  { key: "cod", label: "Cash on delivery", filter: { status: "cod", fulfillment: { $ne: "cancelled" } } },
   { key: "awaiting", label: "Awaiting payment", filter: { status: "awaiting_payment" } },
-  { key: "cancelled", label: "Cancelled", filter: { status: "paid", fulfillment: "cancelled" } },
+  { key: "cancelled", label: "Cancelled", filter: { status: placed, fulfillment: "cancelled" } },
+  { key: "refunds", label: "Refunds", filter: { "refunds.0": { $exists: true } } },
   { key: "all", label: "All", filter: {} },
 ] as const satisfies readonly { key: string; label: string; filter: Filter<OrderDoc> }[];
 
@@ -36,7 +42,13 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
     orders.find(filter).sort({ createdAt: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).toArray(),
     orders.countDocuments(filter),
     Promise.all(views.map((v) => orders.countDocuments(v.filter))),
-    orders.aggregate<{ total: number }>([{ $match: { status: "paid", fulfillment: { $ne: "cancelled" } } }, { $group: { _id: null, total: { $sum: "$total" } } }]).toArray(),
+    // Money received: paid orders, not cancelled, less refunds
+    orders
+      .aggregate<{ total: number }>([
+        { $match: { status: "paid", fulfillment: { $ne: "cancelled" } } },
+        { $group: { _id: null, total: { $sum: netOfRefunds } } },
+      ])
+      .toArray(),
   ]);
   // The account (login phone) behind each order
   const customers = new Map(
@@ -51,9 +63,9 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
   return (
     <div>
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat label="Paid orders" value={String(counts[0])} />
-        <Stat label="Awaiting payment" value={String(counts[1])} />
-        <Stat label="Revenue (paid, not cancelled)" value={formatPrice(revenue[0]?.total ?? 0)} />
+        <Stat label="Orders" value={String(counts[0])} note="Paid online or cash on delivery" href={href({ view: "orders" })} />
+        <Stat label="Cash to collect" value={String(counts[1])} note="Cash on delivery, not collected yet" href={href({ view: "cod" })} />
+        <Stat label="Revenue" value={formatPrice(revenue[0]?.total ?? 0)} note="Money received, less refunds" />
       </div>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -107,10 +119,13 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                     <td className="px-4 py-3 text-chocolate/75">{o.items.reduce((n, i) => n + i.qty, 0)}</td>
                     <td className="px-4 py-3 text-right font-medium">{formatPrice(o.total)}</td>
                     <td className="px-4 py-3">
-                      <PaymentBadge status={o.status} />
+                      <div className="flex flex-wrap gap-1">
+                        <PaymentBadge status={o.status} />
+                        <RefundBadge order={o} />
+                      </div>
                       {o.payment && <p className="mt-1 whitespace-nowrap text-xs text-chocolate/70">{paymentLabel(o.payment)}</p>}
                     </td>
-                    <td className="px-4 py-3">{o.status === "paid" ? <FulfillmentBadge status={o.fulfillment ?? "placed"} /> : "—"}</td>
+                    <td className="px-4 py-3">{isPlaced(o.status) ? <FulfillmentBadge status={o.fulfillment ?? "placed"} /> : "—"}</td>
                   </tr>
                 );
               })}

@@ -1,12 +1,25 @@
 "use server";
 
 import { ObjectId } from "mongodb";
+import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { addressFields, MAX_QTY, shippingFor, validateAddress, type Address, type CartItem, type Order, type SavedAddress } from "@/lib/order";
+import {
+  addressFields,
+  MAX_QTY,
+  paymentMethods,
+  shippingFor,
+  validateAddress,
+  type Address,
+  type CartItem,
+  type Order,
+  type PaymentMethod,
+  type SavedAddress,
+} from "@/lib/order";
 import { lineTotal, priceOf } from "@/lib/product";
 import { getDb, type OrderDoc } from "@/lib/server/db";
-import { markOrderPaid } from "@/lib/server/orders";
-import { getCatalog } from "@/lib/server/products";
+import { markOrderPaid, notifyShop } from "@/lib/server/orders";
+import { getPaymentSettings } from "@/lib/server/payments";
+import { adjustStock, getCatalog } from "@/lib/server/products";
 import { createRazorpayOrder, isValidPaymentSignature } from "@/lib/server/razorpay";
 import { requireUser } from "@/lib/server/session";
 
@@ -60,11 +73,18 @@ function newOrderId() {
   return `ML-${Date.now().toString(36)}${random}`.toUpperCase();
 }
 
-// Creates the order and its Razorpay order before payment, so the payment is tied to it.
+// Online payment: creates the order and its Razorpay order before payment, so the payment is tied
+// to it. Cash on delivery: places the order straight away (`placed`).
 // Prices come from the catalogue on the server, never from the browser.
-export async function createOrder(addressId: string, cart: CartItem[]): Promise<{ error: string } | Order> {
+export async function createOrder(
+  addressId: string,
+  cart: CartItem[],
+  method: PaymentMethod = "razorpay",
+): Promise<{ error: string } | Order | { placed: string }> {
   const user = await requireUser("/checkout/");
   const t = await getTranslations("checkout.errors");
+  // Only the methods the shop has switched on in /admin/payments
+  if (!paymentMethods.includes(method) || !(await getPaymentSettings())[method]) return { error: t("methodUnavailable") };
   const address = user.addresses.find((a) => a._id.toHexString() === addressId);
   if (!address) return { error: t("chooseAddress") };
 
@@ -107,6 +127,30 @@ export async function createOrder(addressId: string, cart: CartItem[]): Promise<
   const shipTo = Object.fromEntries(addressFields.map((f) => [f, address[f]])) as Address;
   const id = newOrderId();
   const total = subtotal + shipping;
+
+  if (method === "cod") {
+    // Placed now, like a paid order: ready to pack, and its items leave stock. The shop marks it
+    // paid in /admin/orders once the cash is collected.
+    const order: OrderDoc = {
+      _id: id,
+      userId: user._id,
+      address: shipTo,
+      items,
+      subtotal,
+      shipping,
+      total,
+      status: "cod",
+      paymentMethod: "cod",
+      fulfillment: "placed",
+      stockTaken: true,
+      createdAt: new Date(),
+    };
+    await (await getDb()).orders.insertOne(order);
+    await adjustStock(items, -1).catch((err) => console.error("Updating stock failed", id, err));
+    after(() => notifyShop(order));
+    return { placed: id };
+  }
+
   let razorpayOrderId: string;
   try {
     razorpayOrderId = await createRazorpayOrder(total, id);
@@ -124,6 +168,7 @@ export async function createOrder(addressId: string, cart: CartItem[]): Promise<
     shipping,
     total,
     status: "awaiting_payment",
+    paymentMethod: "razorpay",
     razorpayOrderId,
     createdAt: new Date(),
   };
@@ -150,7 +195,7 @@ export async function confirmPayment(
   const user = await requireUser("/checkout/");
   const order = await (await getDb()).orders.findOne({ _id: String(orderId), userId: user._id });
   const t = await getTranslations("checkout.errors");
-  if (!order) return { error: t("orderNotFound") };
+  if (!order?.razorpayOrderId) return { error: t("orderNotFound") };
 
   const paymentId = String(payment?.razorpay_payment_id ?? "");
   // Use our own record of the Razorpay order ID, never one sent by the browser

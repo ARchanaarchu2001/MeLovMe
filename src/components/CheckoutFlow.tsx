@@ -8,12 +8,13 @@ import AddressForm from "./AddressForm";
 import { PencilIcon, TrashIcon } from "./Icons";
 import OrderSummary from "./OrderSummary";
 import PayButton from "./PayButton";
+import Spinner from "./Spinner";
 import { confirmPayment, createOrder, deleteAddress } from "@/app/actions/checkout";
 import { site } from "@/data/site";
-import { clearCart, setQty, useCart } from "@/lib/cart";
+import { removeFromCart, setQty, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
-import type { Address, Order, SavedAddress } from "@/lib/order";
+import { paymentMethods, type Address, type Order, type PaymentMethod, type SavedAddress } from "@/lib/order";
 
 // The parts of Razorpay Checkout (https://checkout.razorpay.com/v1/checkout.js) we use
 type RazorpaySuccess = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
@@ -43,30 +44,39 @@ function loadRazorpay() {
   return razorpayScript;
 }
 
-// Checkout for a logged-in customer: delivery address -> pay with Razorpay -> order page.
-// Razorpay shows UPI apps (Google Pay, PhonePe, ...) on phones, a UPI QR code on computers,
-// plus cards and netbanking, and tells us when the payment succeeds.
+// Checkout for a logged-in customer: delivery address -> payment method -> order page.
+// Online: Razorpay shows UPI apps (Google Pay, PhonePe, ...) on phones, a UPI QR code on computers,
+// plus cards and netbanking, and tells us when the payment succeeds. Cash on delivery: the order
+// is placed straight away. Which methods show is set in /admin/payments.
 export default function CheckoutFlow({
   addresses: initialAddresses,
   user,
   razorpayKey,
+  methods,
 }: {
   addresses: SavedAddress[];
   user: { name: string; phone: string };
   razorpayKey: string;
+  methods: Record<PaymentMethod, boolean>;
 }) {
   const t = useTranslations("checkout.flow");
   const router = useRouter();
   const cart = useCart();
+  // Only the items ticked in the cart are ordered; the rest stay in the cart for later
+  const lines = cart.selected;
   const [addresses, setAddresses] = useState(initialAddresses);
   const [selectedId, setSelectedId] = useState(initialAddresses.at(-1)?.id ?? "");
   // First-time customers go straight to the address form
   const [adding, setAdding] = useState(initialAddresses.length === 0);
   const [editing, setEditing] = useState<SavedAddress | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  // What's in `order`, to take out of the cart once it's paid
+  const [orderedSlugs, setOrderedSlugs] = useState<string[]>([]);
   // True while Razorpay's payment window is open
   const [paying, setPaying] = useState(false);
-  const [placed, setPlaced] = useState(false);
+  const [method, setMethod] = useState<PaymentMethod>(methods.razorpay ? "razorpay" : "cod");
+  // Set once the order is placed: paid online, or placed with cash on delivery
+  const [placed, setPlaced] = useState<PaymentMethod | null>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const busy = pending || paying;
@@ -101,23 +111,34 @@ export default function CheckoutFlow({
     setError("");
     startTransition(async () => {
       let current = order;
+      let slugs = orderedSlugs;
       if (!current) {
+        slugs = lines.map((l) => l.product.slug);
         const res = await createOrder(
           selectedId,
-          cart.lines.map((l) => ({ slug: l.product.slug, qty: l.qty })),
+          lines.map((l) => ({ slug: l.product.slug, qty: l.qty })),
+          method,
         );
         if ("error" in res) return setError(res.error);
+        // Cash on delivery: placed, nothing to pay now
+        if ("placed" in res) {
+          setPlaced("cod");
+          removeFromCart(slugs);
+          router.push(`/orders/${res.placed}/`);
+          return;
+        }
         current = res;
         setOrder(res);
+        setOrderedSlugs(slugs);
       }
       if (!(await loadRazorpay()) || !window.Razorpay) {
         return setError(t("loadFailed"));
       }
-      openPayment(current);
+      openPayment(current, slugs);
     });
   }
 
-  function openPayment(o: Order) {
+  function openPayment(o: Order, slugs: string[]) {
     const checkout = new window.Razorpay!({
       key: razorpayKey,
       order_id: o.razorpayOrderId,
@@ -133,8 +154,8 @@ export default function CheckoutFlow({
           const res = await confirmPayment(o.id, payment);
           setPaying(false);
           if ("error" in res) return setError(res.error);
-          setPlaced(true);
-          clearCart();
+          setPlaced("razorpay");
+          removeFromCart(slugs);
           router.push(`/orders/${o.id}/`);
         });
       },
@@ -146,11 +167,11 @@ export default function CheckoutFlow({
     checkout.open();
   }
 
-  // Paid: the cart is now empty, so show this (not "cart empty") while the order page opens
+  // Placed: the cart is now empty, so show this (not "cart empty") while the order page opens
   if (placed) {
     return (
       <div className="py-16 text-center">
-        <p className="eyebrow">{t("paymentReceived")}</p>
+        <p className="eyebrow">{placed === "cod" ? t("orderPlaced") : t("paymentReceived")}</p>
         <p className="mt-4 text-chocolate/70">{t("openingOrder")}</p>
       </div>
     );
@@ -158,7 +179,7 @@ export default function CheckoutFlow({
 
   if (!cart.ready) return <div className="min-h-[40vh]" />;
 
-  if (!order && cart.lines.length === 0) {
+  if (!order && lines.length === 0) {
     return (
       <div className="py-16 text-center">
         <p className="text-chocolate/70">{t("cartEmpty")}</p>
@@ -168,7 +189,7 @@ export default function CheckoutFlow({
   }
 
   const summary = order ?? {
-    items: cart.lines.map((l) => ({ slug: l.product.slug, name: l.product.name, qty: l.qty, total: l.total })),
+    items: lines.map((l) => ({ slug: l.product.slug, name: l.product.name, qty: l.qty, total: l.total })),
     subtotal: cart.subtotal,
     shipping: cart.shipping,
     total: cart.total,
@@ -247,12 +268,59 @@ export default function CheckoutFlow({
               >
                 {t("addAddress")}
               </button>
+              {/* A choice only when the shop offers both */}
+              {methods.razorpay && methods.cod && (
+                <fieldset className="mt-10">
+                  <legend className="mb-4 text-sm uppercase tracking-[0.2em]">{t("paymentMethod")}</legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {paymentMethods.map((m) => (
+                      <label
+                        key={m}
+                        className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 text-sm transition-colors ${
+                          method === m ? "border-gold bg-ivory" : "border-chocolate/20 hover:border-gold/60"
+                        }`}
+                      >
+                        <input type="radio" name="method" checked={method === m} onChange={() => setMethod(m)} className="mt-1 accent-gold" />
+                        <span>
+                          <span className="block font-medium">{m === "cod" ? t("cod") : t("payOnline")}</span>
+                          <span className="block text-chocolate/65">{m === "cod" ? t("codText") : t("payOnlineText")}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
               <div className="mt-8">
-                <PayButton onClick={handlePay} disabled={busy || !selectedId} pending={busy}>
-                  {busy ? t("pleaseWait") : t("pay", { amount: formatPrice(cart.total) })}
-                </PayButton>
-                <p className="mt-3 text-xs text-chocolate/60">{t("paymentMethods")}</p>
+                {!methods.razorpay && !methods.cod ? (
+                  <p className="text-sm text-chocolate/70">{t("noPaymentMethods")}</p>
+                ) : method === "cod" ? (
+                  <>
+                    <button type="button" onClick={handlePay} disabled={busy || !selectedId} className="btn btn-primary w-full sm:w-auto">
+                      {busy && <Spinner />}
+                      {busy ? t("pleaseWait") : t("placeOrder", { amount: formatPrice(cart.total) })}
+                    </button>
+                    <p className="mt-3 text-xs text-chocolate/60">{t("codNote", { amount: formatPrice(cart.total) })}</p>
+                  </>
+                ) : (
+                  <>
+                    <PayButton onClick={handlePay} disabled={busy || !selectedId} pending={busy}>
+                      {busy ? t("pleaseWait") : t("pay", { amount: formatPrice(cart.total) })}
+                    </PayButton>
+                    <p className="mt-3 text-xs text-chocolate/60">{t("paymentMethods")}</p>
+                  </>
+                )}
+                {(methods.razorpay || methods.cod) && (
+                  <p className="mt-2 text-xs text-chocolate/60">
+                    {t.rich("agreePolicy", {
+                      link: (chunks) => (
+                        <Link href="/refund-policy/" target="_blank" className="text-gold underline-offset-4 hover:underline">
+                          {chunks}
+                        </Link>
+                      ),
+                    })}
+                  </p>
+                )}
               </div>
             </>
           )}

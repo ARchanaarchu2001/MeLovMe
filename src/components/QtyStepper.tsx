@@ -18,7 +18,7 @@ export default function QtyStepper({
   const button = "flex h-10 w-10 items-center justify-center text-lg transition-colors hover:text-gold disabled:opacity-30";
 
   return (
-    <div className="inline-flex items-center rounded-full border border-chocolate/20">
+    <div className="inline-flex items-center justify-between rounded-full border border-chocolate/20">
       <button type="button" className={button} onClick={() => onChange(qty - 1)} disabled={qty <= min} aria-label={t("decrease")}>
         −
       </button>

@@ -1,9 +1,10 @@
 import "server-only";
 import { after } from "next/server";
 import { site } from "@/data/site";
-import { getDb } from "./db";
+import type { Refund } from "@/lib/order";
+import { getDb, type OrderDoc } from "./db";
 import { adjustStock } from "./products";
-import { fetchPaymentDetails } from "./razorpay";
+import { fetchPaymentDetails, fetchRefundStatus } from "./razorpay";
 
 // Marks the order for this Razorpay order as paid. Called both from checkout (after the
 // browser reports the payment) and from Razorpay's webhook, in either order and possibly
@@ -30,14 +31,59 @@ export async function markOrderPaid(razorpayOrderId: string, paymentId: string) 
     } catch (err) {
       console.error("Saving payment details failed", err);
     }
-
-    // Optional notification to the shop (e.g. Formspree)
-    if (site.orderEndpoint) {
-      await fetch(site.orderEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ subject: `New order ${order._id} — ${order.address.name}`, order }),
-      }).catch((err) => console.error("Order notification failed", err));
-    }
+    await notifyShop(order);
   });
 }
+
+// Optional notification to the shop for each new order (e.g. Formspree), see site.orderEndpoint
+export async function notifyShop(order: OrderDoc) {
+  if (!site.orderEndpoint) return;
+  const how = order.status === "cod" ? " (cash on delivery)" : "";
+  await fetch(site.orderEndpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ subject: `New order ${order._id}${how} — ${order.address.name}`, order }),
+  }).catch((err) => console.error("Order notification failed", err));
+}
+
+// Records a refund's new status (from Razorpay's webhook, or a lookup)
+export async function setRefundStatus(refundId: string, status: Refund["status"]) {
+  await (await getDb()).orders.updateOne(
+    { "refunds.id": refundId },
+    { $set: { "refunds.$.status": status, "refunds.$.updatedAt": new Date() } },
+  );
+}
+
+// Asks Razorpay about refunds still "pending" on this order and saves any change. The webhook
+// normally does this, but it can't reach a computer running the shop locally.
+export async function syncPendingRefunds(order: OrderDoc) {
+  const pending = (order.refunds ?? []).filter((r) => r.status === "pending");
+  await Promise.all(
+    pending.map(async (r) => {
+      try {
+        const status = await fetchRefundStatus(r.id);
+        if (status !== r.status) {
+          await setRefundStatus(r.id, status);
+          r.status = status;
+        }
+      } catch (err) {
+        console.error("Checking refund failed", r.id, err);
+      }
+    }),
+  );
+}
+
+// For revenue totals ($group … $sum): an order's total less what has been refunded (or is on its way)
+export const netOfRefunds = {
+  $subtract: [
+    "$total",
+    {
+      $sum: {
+        $map: {
+          input: { $filter: { input: { $ifNull: ["$refunds", []] }, cond: { $ne: ["$$this.status", "failed"] } } },
+          in: "$$this.amount",
+        },
+      },
+    },
+  ],
+};

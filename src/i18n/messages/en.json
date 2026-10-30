@@ -236,8 +236,9 @@
     "enquiry": {
       "button": "Enquire on WhatsApp",
       "label": "Ask about {name} on WhatsApp",
-      "note": "Questions about this product? Chat with us.",
-      "message": "Hi MELOVME! I'd like to know more about {name} ({size}).\n{link}"
+      "note": "Questions, or want to order? Chat with us.",
+      "orderNote": "Order or ask about this product on WhatsApp.",
+      "message": "Hi MELOVME! I'd like to enquire about / buy {name} ({size}).\n{link}"
     },
     "filter": {
       "label": "Shop by category",

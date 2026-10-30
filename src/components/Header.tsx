@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useCanBuy } from "./CatalogProvider";
 import Logo from "./Logo";
 import { CartIcon, Icon, LeafArt, SocialIcon, UserIcon } from "./Icons";
 import { navLinks, site, socialLinks, whatsappUrl } from "@/data/site";
@@ -15,6 +16,7 @@ export default function Header() {
   const pathname = usePathname();
   const { count } = useCart();
   const { count: wishCount } = useWishlist();
+  const canBuy = useCanBuy();
   const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -80,7 +82,8 @@ export default function Header() {
             {[
               { href: "/wishlist/", label: t("header.wishlist"), count: wishCount, icon: <Icon name="heart" className="h-5 w-5" /> },
               // On phones, opens the slide-in cart, except on the cart and checkout pages themselves
-              { href: "/cart/", label: t("header.cart"), count, icon: <CartIcon />, drawer: !/^\/(cart|checkout)/.test(pathname) },
+              // Not shown when no payment method is on (customers order on WhatsApp then)
+              ...(canBuy ? [{ href: "/cart/", label: t("header.cart"), count, icon: <CartIcon />, drawer: !/^\/(cart|checkout)/.test(pathname) }] : []),
               // Logged-out visitors are sent on to the login page
               { href: "/profile/", label: t("header.account"), count: 0, icon: <UserIcon />, desktopOnly: true },
             ].map((l) => (

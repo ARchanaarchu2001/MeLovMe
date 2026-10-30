@@ -7,6 +7,7 @@ import Footer from "./Footer";
 import Header from "./Header";
 import { getAnnouncement } from "@/lib/server/announcement";
 import { getPaymentSettings } from "@/lib/server/payments";
+import { canBuy } from "@/lib/payments";
 import { childrenOf, productCounts } from "@/lib/category";
 import { getCatalog, getCategories } from "@/lib/server/products";
 
@@ -18,14 +19,19 @@ export default async function ShopChrome({ children }: { children: ReactNode }) 
   // Main categories with something in the shop, for the footer
   const counts = productCounts(categories, catalog);
   const mainCategories = childrenOf(categories, null).filter((c) => (counts.get(c.id)?.total ?? 0) > 0);
+  const buying = canBuy(payments);
   return (
-    <CatalogProvider products={catalog}>
+    <CatalogProvider products={catalog} canBuy={buying}>
       <AnnouncementBar announcement={announcement} />
       <Header />
       <main className="flex-1">{children}</main>
       <Footer categories={mainCategories} />
-      <CartDrawer razorpay={payments.razorpay} />
-      <CartToast />
+      {buying && (
+        <>
+          <CartDrawer razorpay={payments.razorpay} />
+          <CartToast />
+        </>
+      )}
     </CatalogProvider>
   );
 }

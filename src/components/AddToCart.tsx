@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import CartButton from "./CartButton";
-import { useCatalog } from "./CatalogProvider";
+import { useCanBuy, useCatalog } from "./CatalogProvider";
 import PayButton from "./PayButton";
 import { MAX_QTY, addToCart, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
@@ -14,6 +14,7 @@ import { LOW_STOCK, activeCombos, maxQtyFor, priceOf, type Product } from "@/lib
 // Product page buttons: Add to Cart (a quantity stepper and Go to Cart once it's in the cart) and
 // Buy Now, or an out-of-stock message instead. Above them: "In stock", or "Only 3 left" when low.
 // Products with combo offers get a "1 Piece / 2 Pieces / 3 Pieces" picker instead of the stepper.
+// With no payment method on, only the stock line: the WhatsApp button under it takes the order.
 // `razorpay`: online payment is switched on, so Buy Now shows Razorpay's badges
 export default function AddToCart({ slug, inStock, stock, razorpay }: { slug: string; inStock: boolean; stock: number | null; razorpay: boolean }) {
   const t = useTranslations("products");
@@ -23,6 +24,7 @@ export default function AddToCart({ slug, inStock, stock, razorpay }: { slug: st
   // Combos the customer can actually buy (not more pieces than are in stock)
   const combos = product ? activeCombos(product).filter((c) => c.qty <= maxQtyFor(product, MAX_QTY)) : [];
   const [picked, setPicked] = useState(1);
+  const canBuy = useCanBuy();
 
   if (!inStock) {
     return (
@@ -36,6 +38,14 @@ export default function AddToCart({ slug, inStock, stock, razorpay }: { slug: st
   }
 
   const low = stock !== null && stock <= LOW_STOCK;
+  const stockLine = (
+    <p className={`mb-4 flex items-center gap-2 text-sm font-medium ${low ? "text-amber-800" : "text-green-800"}`}>
+      <span className={`h-2 w-2 rounded-full ${low ? "bg-amber-600" : "bg-green-700"}`} aria-hidden="true" />
+      {low ? t("onlyLeft", { count: stock }) : t("inStock")}
+    </p>
+  );
+  if (!canBuy) return <div className="mt-6 md:mt-10">{stockLine}</div>;
+
   // With combos, both buttons put exactly the picked number of pieces in the cart
   const buyNow = () => {
     // No "added" pop-up: we're off to checkout
@@ -47,10 +57,7 @@ export default function AddToCart({ slug, inStock, stock, razorpay }: { slug: st
 
   return (
     <div className="mt-6 md:mt-10">
-      <p className={`mb-4 flex items-center gap-2 text-sm font-medium ${low ? "text-amber-800" : "text-green-800"}`}>
-        <span className={`h-2 w-2 rounded-full ${low ? "bg-amber-600" : "bg-green-700"}`} aria-hidden="true" />
-        {low ? t("onlyLeft", { count: stock }) : t("inStock")}
-      </p>
+      {stockLine}
       {product && combos.length > 0 && <ComboPicker product={product} combos={combos} picked={picked} onPick={setPicked} />}
       {/* Add to Cart and Buy Now side by side, "Go to cart" under them */}
       <div className="grid w-full max-w-md grid-cols-2 gap-3">

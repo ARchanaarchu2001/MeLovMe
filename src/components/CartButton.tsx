@@ -1,14 +1,15 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCatalog } from "./CatalogProvider";
+import { useCanBuy, useCatalog } from "./CatalogProvider";
 import QtyStepper from "./QtyStepper";
 import { MAX_QTY, addToCart, setQty, useCart } from "@/lib/cart";
 import { maxQtyFor } from "@/lib/product";
 
 // "Add to Cart" until the product is in the cart; then a stepper showing (and changing)
 // how many are in the cart. Going down to 0 takes it out of the cart again.
-// Out-of-stock products get a greyed-out "Out of Stock" button instead.
+// Out-of-stock products get a greyed-out "Out of Stock" button instead. Nothing at all when no
+// payment method is on (the shop takes orders on WhatsApp then).
 // `compact` is for product cards: it fills a narrow card and goes back to normal width once
 // the card's @container is wider (@xs).
 const COMPACT =
@@ -20,6 +21,8 @@ export default function CartButton({ slug, compact = false }: { slug: string; co
   const product = useCatalog().get(slug);
   const inStock = product?.inStock ?? true;
   const inCart = lines.find((l) => l.product.slug === slug)?.qty ?? 0;
+
+  if (!useCanBuy()) return null;
 
   if (!inStock) {
     return (

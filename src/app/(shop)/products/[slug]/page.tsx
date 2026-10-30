@@ -15,6 +15,7 @@ import ProductReviews from "@/components/ProductReviews";
 import Stars from "@/components/Stars";
 import { getCatalog, getCatalogProduct } from "@/lib/server/products";
 import { getPaymentSettings } from "@/lib/server/payments";
+import { canBuy } from "@/lib/payments";
 import { getProductReviews } from "@/lib/server/reviews";
 
 // Pages for current products are built ahead; products added later render on first visit
@@ -52,7 +53,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
   const t = await getTranslations("products.detail");
   const tr = await getTranslations("products.reviews");
   const { summary, reviews } = await getProductReviews(product.slug);
-  const { razorpay } = await getPaymentSettings();
+  const payments = await getPaymentSettings();
 
   const others = (await getCatalog()).filter((p) => p.slug !== product.slug);
 
@@ -106,9 +107,9 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               slug={product.slug}
               inStock={product.inStock}
               stock={product.stock}
-              razorpay={razorpay}
+              razorpay={payments.razorpay}
             />
-            <ProductEnquiry product={product} />
+            <ProductEnquiry product={product} primary={!canBuy(payments)} />
 
             <div className="mt-8 md:mt-12 divide-y divide-chocolate/10 border-y border-chocolate/10">
               <details className="group py-5" open>

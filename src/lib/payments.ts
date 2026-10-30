@@ -9,3 +9,6 @@ export const defaultPaymentSettings: PaymentSettings = {
   razorpay: true,
   cod: false,
 };
+
+// With no payment method on, the shop is a catalogue: no cart or Buy Now, customers order on WhatsApp
+export const canBuy = (s: PaymentSettings) => s.razorpay || s.cod;

@@ -29,6 +29,7 @@ import { cloudinaryCloudName } from "@/lib/server/cloudinary";
 import { freeCategorySlug, getDb } from "@/lib/server/db";
 import { syncPendingRefunds } from "@/lib/server/orders";
 import { refreshPaymentSettings } from "@/lib/server/payments";
+import { canBuy } from "@/lib/payments";
 import { adjustStock, loadCategories, refreshCatalog } from "@/lib/server/products";
 import { createRefund } from "@/lib/server/razorpay";
 import { cleanReview, refreshReviews } from "@/lib/server/reviews";
@@ -135,12 +136,14 @@ export async function refundOrder(orderId: string, amount: number): Promise<{ er
 
 // ---------- Payment methods ----------
 
-export async function savePaymentSettings(input: PaymentSettings): Promise<{ ok: true }> {
+// At least one method must stay on, so customers can always buy
+export async function savePaymentSettings(input: PaymentSettings): Promise<{ ok: true } | { error: string }> {
   await requireAdmin();
   const settings: PaymentSettings = {
     razorpay: input?.razorpay === true,
     cod: input?.cod === true,
   };
+  if (!canBuy(settings)) return { error: "Keep at least one payment method switched on." };
   await (await getDb()).settings.updateOne(
     { _id: "payments" },
     { $set: { ...settings, updatedAt: new Date() } },

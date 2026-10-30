@@ -5,8 +5,13 @@ import type { Product } from "@/lib/product";
 
 // "Enquire on WhatsApp" for one product: opens a chat with the shop with the product's name, size
 // and short link (/p/<slug>/, which WhatsApp turns into a preview with the photo) typed in.
-// `compact` is the round icon button on product cards; the product page gets the full button.
-export default function ProductEnquiry({ product, compact = false }: { product: Pick<Product, "slug" | "name" | "size">; compact?: boolean }) {
+// `compact` is the round icon button on product cards; the product page gets the full button,
+// filled in (`primary`) when it's the only way to order (no payment method switched on).
+export default function ProductEnquiry({ product, compact = false, primary = false }: {
+  product: Pick<Product, "slug" | "name" | "size">;
+  compact?: boolean;
+  primary?: boolean;
+}) {
   const t = useTranslations("products.enquiry");
   const href = whatsappUrl(t("message", { name: product.name, size: product.size, link: `${siteUrl()}/p/${product.slug}/` }));
 
@@ -31,12 +36,14 @@ export default function ProductEnquiry({ product, compact = false }: { product: 
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="btn h-11 w-full justify-center gap-2 border border-[#25d366] !px-4 !tracking-[0.15em] text-[#128c7e] hover:bg-[#25d366] hover:text-white"
+        className={`btn h-11 w-full justify-center gap-2 border border-[#25d366] !px-4 !tracking-[0.15em] ${
+          primary ? "bg-[#25d366] text-white shadow-md hover:bg-[#1ebe5b]" : "text-[#128c7e] hover:bg-[#25d366] hover:text-white"
+        }`}
       >
         <WhatsAppIcon />
         {t("button")}
       </a>
-      <p className="mt-2 text-center text-xs text-chocolate/60">{t("note")}</p>
+      <p className="mt-2 text-center text-xs text-chocolate/60">{t(primary ? "orderNote" : "note")}</p>
     </div>
   );
 }

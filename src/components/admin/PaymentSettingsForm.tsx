@@ -4,24 +4,29 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { savePaymentSettings } from "@/app/actions/admin";
 import Spinner from "@/components/Spinner";
-import type { PaymentSettings } from "@/lib/payments";
+import { canBuy, type PaymentSettings } from "@/lib/payments";
 
-// Switches for how customers can buy at checkout: Razorpay and cash on delivery
+// Switches for how customers can buy at checkout: Razorpay and cash on delivery. At least one must be on.
 export default function PaymentSettingsForm({ initial }: { initial: PaymentSettings }) {
   const router = useRouter();
   const [v, setV] = useState(initial);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const valid = canBuy(v);
   const [pending, startTransition] = useTransition();
 
   const set = <K extends keyof PaymentSettings>(k: K, value: PaymentSettings[K]) => {
     setV((prev) => ({ ...prev, [k]: value }));
     setSaved(false);
+    setError("");
   };
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!valid) return;
     startTransition(async () => {
-      await savePaymentSettings(v);
+      const res = await savePaymentSettings(v);
+      if ("error" in res) return setError(res.error);
       setSaved(true);
       router.refresh();
     });
@@ -46,13 +51,13 @@ export default function PaymentSettingsForm({ initial }: { initial: PaymentSetti
         onChange={(on) => set("cod", on)}
       />
 
-      {!v.razorpay && !v.cod && (
-        <p className="rounded-xl bg-amber-600/10 px-4 py-3 text-sm text-amber-900" role="status">
-          Every way to buy is switched off. Customers can still fill their cart, but checkout will ask them to contact you to order.
+      {(!valid || error) && (
+        <p className="rounded-xl bg-red-700/10 px-4 py-3 text-sm text-red-800" role="alert">
+          {error || "Switch on at least one payment method (Razorpay or cash on delivery) to save."}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-4">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
+        <button type="submit" className="btn btn-primary" disabled={pending || !valid}>
           {pending && <Spinner />}
           {pending ? "Saving…" : "Save changes"}
         </button>

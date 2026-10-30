@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
 import CheckoutFlow from "@/components/CheckoutFlow";
 import { getPaymentSettings } from "@/lib/server/payments";
+import { canBuy } from "@/lib/payments";
 import { razorpayKeyId } from "@/lib/server/razorpay";
 import { requireUser } from "@/lib/server/session";
 
@@ -15,6 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 // Guests can shop and fill their cart, but must log in here before buying
 export default async function CheckoutPage() {
+  // No payment method on: the shop takes orders on WhatsApp, from the product pages
+  if (!canBuy(await getPaymentSettings())) redirect("/products/");
   const user = await requireUser("/checkout/");
   const t = await getTranslations("checkout.page");
   const addresses = user.addresses.map(({ _id, ...a }) => ({ ...a, id: _id.toHexString() }));

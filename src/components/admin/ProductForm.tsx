@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactN
 import { saveProduct } from "@/app/actions/admin";
 import { MAX_IMAGE_MB, onlyDigits, productLimits, toSlug, validateProduct, type ProductErrors, type ProductInput } from "@/lib/admin-validation";
 import { formatPrice } from "@/lib/format";
+import type { Category } from "@/lib/category";
 import { MAX_COMBOS, priceOf } from "@/lib/product";
 import { MAX_QTY } from "@/lib/order";
 import Spinner from "@/components/Spinner";
@@ -90,9 +91,11 @@ const errorFor = (k: keyof FormValues): keyof ProductErrors =>
 export default function ProductForm({ initial, isNew, categories }: {
   initial: ProductFormInitial;
   isNew: boolean;
-  categories: string[]; // already used by other products, offered as choices
+  categories: Category[];
 }) {
   const router = useRouter();
+  // Grows when a category is added from the picker
+  const [categoryList, setCategoryList] = useState(categories);
   const [v, setV] = useState<FormValues>({
     ...initial,
     price: initial.price ? String(initial.price) : "",
@@ -200,7 +203,7 @@ export default function ProductForm({ initial, isNew, categories }: {
       // A new product's URL name comes from its name (the server makes sure it's free)
       slug: isNew ? toSlug(v.name) : v.slug,
       name: v.name,
-      category: v.category,
+      categoryId: v.categoryId,
       size: v.size,
       price: Number(v.price),
       // Unchanged: send null so the server keeps the current count (orders may have changed it)
@@ -257,13 +260,14 @@ export default function ProductForm({ initial, isNew, categories }: {
           <input {...field("name")} maxLength={productLimits.name} className={input} required />
         </Field>
         <div className="grid gap-5 sm:grid-cols-3">
-          <Field label="Category" required error={errors.category} hint={categories.length ? "Pick one, or type a new one." : undefined}>
+          {/* Not a <label>: it would pass clicks in the menu on to the box and reopen it */}
+          <Field label="Category" required group error={errors.categoryId}>
             <CategoryPicker
-              value={v.category}
-              options={categories}
-              onChange={(c) => set("category", c)}
-              invalid={!!errors.category}
-              maxLength={productLimits.category}
+              categories={categoryList}
+              value={v.categoryId}
+              onChange={(id) => set("categoryId", id)}
+              onCreated={(c) => setCategoryList((list) => [...list, c])}
+              invalid={!!errors.categoryId}
               className={input}
             />
           </Field>

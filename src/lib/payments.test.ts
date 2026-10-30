@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vitest";
 import { isPlaced, refundState, type Refund } from "./order";
-import { defaultPaymentSettings, validatePaymentSettings, whatsappProductMessage } from "./payments";
 
 const refund = (amount: number, status: Refund["status"]): Refund => ({ id: `rfnd_${amount}${status}`, amount, status, createdAt: new Date() });
 
@@ -37,32 +36,5 @@ describe("order status: isPlaced", () => {
     expect(isPlaced("paid")).toBe(true);
     expect(isPlaced("cod")).toBe(true);
     expect(isPlaced("awaiting_payment")).toBe(false);
-  });
-});
-
-describe("payment settings", () => {
-  test("the defaults are valid", () => {
-    expect(validatePaymentSettings(defaultPaymentSettings)).toEqual({});
-  });
-
-  test("checkout needs Razorpay or cash on delivery", () => {
-    expect(validatePaymentSettings({ ...defaultPaymentSettings, razorpay: false, cod: false, whatsapp: true }).form).toBeTruthy();
-    expect(validatePaymentSettings({ ...defaultPaymentSettings, razorpay: false, cod: true })).toEqual({});
-  });
-
-  test("the WhatsApp button needs a message", () => {
-    expect(validatePaymentSettings({ ...defaultPaymentSettings, whatsapp: true, whatsappMessage: "  " }).whatsappMessage).toBeTruthy();
-  });
-
-  test("the WhatsApp message lists the product under the shop's opening line", () => {
-    const text = whatsappProductMessage(" Hi! Is this available? ", {
-      name: "Signature Body Lotion",
-      size: "50 ml",
-      price: "₹699",
-      url: "https://melovme.in/products/signature-body-lotion/",
-    });
-    expect(text).toBe(
-      "Hi! Is this available?\n\n• Signature Body Lotion (50 ml)\n• Price: ₹699\n• https://melovme.in/products/signature-body-lotion/",
-    );
   });
 });

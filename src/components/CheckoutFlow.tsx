@@ -7,7 +7,7 @@ import { useState, useTransition } from "react";
 import AddressForm from "./AddressForm";
 import { PencilIcon, TrashIcon } from "./Icons";
 import OrderSummary from "./OrderSummary";
-import PayButton from "./PayButton";
+import PayButton, { SecurePaymentBadge } from "./PayButton";
 import Spinner from "./Spinner";
 import { confirmPayment, createOrder, deleteAddress } from "@/app/actions/checkout";
 import { site } from "@/data/site";
@@ -15,6 +15,12 @@ import { removeFromCart, setQty, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
 import { paymentMethods, type Address, type Order, type PaymentMethod, type SavedAddress } from "@/lib/order";
+
+// The ways to buy at checkout: pay online or cash on delivery
+const methodText = {
+  razorpay: { title: "payOnline", text: "payOnlineText" },
+  cod: { title: "cod", text: "codText" },
+} as const;
 
 // The parts of Razorpay Checkout (https://checkout.razorpay.com/v1/checkout.js) we use
 type RazorpaySuccess = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
@@ -74,7 +80,9 @@ export default function CheckoutFlow({
   const [orderedSlugs, setOrderedSlugs] = useState<string[]>([]);
   // True while Razorpay's payment window is open
   const [paying, setPaying] = useState(false);
-  const [method, setMethod] = useState<PaymentMethod>(methods.razorpay ? "razorpay" : "cod");
+  // The ways to buy the shop has switched on, in the order they're listed
+  const offered = paymentMethods.filter((m) => methods[m]);
+  const [method, setMethod] = useState<PaymentMethod>(offered[0] ?? "razorpay");
   // Set once the order is placed: paid online, or placed with cash on delivery
   const [placed, setPlaced] = useState<PaymentMethod | null>(null);
   const [error, setError] = useState("");
@@ -170,7 +178,7 @@ export default function CheckoutFlow({
   // Placed: the cart is now empty, so show this (not "cart empty") while the order page opens
   if (placed) {
     return (
-      <div className="py-16 text-center">
+      <div className="py-10 md:py-16 text-center">
         <p className="eyebrow">{placed === "cod" ? t("orderPlaced") : t("paymentReceived")}</p>
         <p className="mt-4 text-chocolate/70">{t("openingOrder")}</p>
       </div>
@@ -181,9 +189,9 @@ export default function CheckoutFlow({
 
   if (!order && lines.length === 0) {
     return (
-      <div className="py-16 text-center">
+      <div className="py-10 md:py-16 text-center">
         <p className="text-chocolate/70">{t("cartEmpty")}</p>
-        <Link href="/products/" className="btn btn-primary mt-8">{t("shopProducts")}</Link>
+        <Link href="/products/" className="btn btn-primary mt-6 md:mt-8">{t("shopProducts")}</Link>
       </div>
     );
   }
@@ -196,7 +204,7 @@ export default function CheckoutFlow({
   };
 
   return (
-    <div className="grid gap-12 lg:grid-cols-[1fr_22rem]">
+    <div className="grid gap-8 md:gap-12 lg:grid-cols-[1fr_22rem]">
       {!order ? (
         <div>
           <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">{t("deliveryAddress")}</h2>
@@ -268,60 +276,55 @@ export default function CheckoutFlow({
               >
                 {t("addAddress")}
               </button>
-              {/* A choice only when the shop offers both */}
-              {methods.razorpay && methods.cod && (
-                <fieldset className="mt-10">
+              {/* A choice only when the shop offers more than one way */}
+              {offered.length > 1 && (
+                <fieldset className="mt-6 md:mt-10">
                   <legend className="mb-4 text-sm uppercase tracking-[0.2em]">{t("paymentMethod")}</legend>
+                  {/* Tiles side by side on wider screens, rows on phones */}
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {paymentMethods.map((m) => (
-                      <label
-                        key={m}
-                        className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 text-sm transition-colors ${
-                          method === m ? "border-gold bg-ivory" : "border-chocolate/20 hover:border-gold/60"
-                        }`}
-                      >
-                        <input type="radio" name="method" checked={method === m} onChange={() => setMethod(m)} className="mt-1 accent-gold" />
-                        <span>
-                          <span className="block font-medium">{m === "cod" ? t("cod") : t("payOnline")}</span>
-                          <span className="block text-chocolate/65">{m === "cod" ? t("codText") : t("payOnlineText")}</span>
-                        </span>
-                      </label>
-                    ))}
+                    {offered.map((m) => {
+                      const active = method === m;
+                      return (
+                        <label
+                          key={m}
+                          className={`relative flex cursor-pointer items-center gap-4 rounded-2xl border p-4 text-sm transition-all has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gold sm:flex-col sm:items-start sm:gap-3 sm:p-5 ${
+                            active
+                              ? "border-gold bg-ivory shadow-sm ring-1 ring-gold"
+                              : "border-chocolate/15 bg-white/40 hover:border-gold/60 hover:bg-white/70"
+                          }`}
+                        >
+                          <input type="radio" name="method" checked={active} onChange={() => setMethod(m)} className="sr-only" />
+                          <span
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors ${
+                              active ? "bg-chocolate text-ivory" : "bg-gold/15 text-gold"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            <MethodIcon method={m} />
+                          </span>
+                          <span className="min-w-0 flex-1 pr-6 sm:pr-0">
+                            <span className="block font-medium">{t(methodText[m].title)}</span>
+                            <span className="mt-0.5 block text-xs leading-relaxed text-chocolate/65">{t(methodText[m].text)}</span>
+                          </span>
+                          {/* Tick in the corner of the chosen tile */}
+                          <span
+                            className={`absolute right-4 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border-2 transition-colors sm:top-4 sm:translate-y-0 ${
+                              active ? "border-gold bg-gold text-espresso" : "border-chocolate/25"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            {active && (
+                              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="m5 12 5 5 9-10" />
+                              </svg>
+                            )}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </fieldset>
               )}
-              {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
-              <div className="mt-8">
-                {!methods.razorpay && !methods.cod ? (
-                  <p className="text-sm text-chocolate/70">{t("noPaymentMethods")}</p>
-                ) : method === "cod" ? (
-                  <>
-                    <button type="button" onClick={handlePay} disabled={busy || !selectedId} className="btn btn-primary w-full sm:w-auto">
-                      {busy && <Spinner />}
-                      {busy ? t("pleaseWait") : t("placeOrder", { amount: formatPrice(cart.total) })}
-                    </button>
-                    <p className="mt-3 text-xs text-chocolate/60">{t("codNote", { amount: formatPrice(cart.total) })}</p>
-                  </>
-                ) : (
-                  <>
-                    <PayButton onClick={handlePay} disabled={busy || !selectedId} pending={busy}>
-                      {busy ? t("pleaseWait") : t("pay", { amount: formatPrice(cart.total) })}
-                    </PayButton>
-                    <p className="mt-3 text-xs text-chocolate/60">{t("paymentMethods")}</p>
-                  </>
-                )}
-                {(methods.razorpay || methods.cod) && (
-                  <p className="mt-2 text-xs text-chocolate/60">
-                    {t.rich("agreePolicy", {
-                      link: (chunks) => (
-                        <Link href="/refund-policy/" target="_blank" className="text-gold underline-offset-4 hover:underline">
-                          {chunks}
-                        </Link>
-                      ),
-                    })}
-                  </p>
-                )}
-              </div>
             </>
           )}
         </div>
@@ -339,7 +342,7 @@ export default function CheckoutFlow({
             {t.rich("deliveringTo", { address: () => <AddressText address={order.address} inline /> })}
           </p>
           {error && <p className="mt-6 text-sm text-red-700" role="alert">{error}</p>}
-          <div className="mt-8 flex flex-wrap items-center gap-6">
+          <div className="mt-6 md:mt-8 flex flex-wrap items-center gap-6">
             <PayButton onClick={handlePay} disabled={busy} pending={busy}>
               {busy ? t("pleaseWait") : t("pay", { amount: formatPrice(order.total) })}
             </PayButton>
@@ -358,39 +361,91 @@ export default function CheckoutFlow({
         </div>
       )}
 
-      <aside className="h-fit rounded-[2rem] bg-ivory p-8">
-        <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">{t("orderSummary")}</h2>
-        <ul className="mb-6 space-y-3 border-b border-chocolate/15 pb-6 text-sm">
-          {summary.items.map((i) => (
-            <li key={i.name}>
-              <div className="flex justify-between gap-4">
-                <span>
-                  {i.name} <span className="text-chocolate/60">× {i.qty}</span>
-                </span>
-                <span>{formatPrice(i.total)}</span>
-              </div>
-              {/* Only live cart items have a slug — once the order is created for payment it can't be changed */}
-              {"slug" in i && (
-                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[0.65rem] tracking-[0.2em] text-chocolate/60">
-                  <button type="button" onClick={() => moveToWishlist(i.slug)} className="uppercase hover:text-gold">
-                    {t("moveToWishlist")}
-                  </button>
-                  <button type="button" onClick={() => setQty(i.slug, 0)} className="uppercase hover:text-gold">
-                    {t("remove")}
-                  </button>
+      {/* Right column: the order summary, with the pay button under it once an address is chosen */}
+      <div className="grid h-fit gap-5 lg:sticky lg:top-28">
+        <aside className="rounded-[2rem] bg-ivory p-6 md:p-8">
+          <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">{t("orderSummary")}</h2>
+          <ul className="mb-6 space-y-3 border-b border-chocolate/15 pb-6 text-sm">
+            {summary.items.map((i) => (
+              <li key={i.name}>
+                <div className="flex justify-between gap-4">
+                  <span>
+                    {i.name} <span className="text-chocolate/60">× {i.qty}</span>
+                  </span>
+                  <span>{formatPrice(i.total)}</span>
                 </div>
+                {/* Only live cart items have a slug — once the order is created for payment it can't be changed */}
+                {"slug" in i && (
+                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[0.65rem] tracking-[0.2em] text-chocolate/60">
+                    <button type="button" onClick={() => moveToWishlist(i.slug)} className="uppercase hover:text-gold">
+                      {t("moveToWishlist")}
+                    </button>
+                    <button type="button" onClick={() => setQty(i.slug, 0)} className="uppercase hover:text-gold">
+                      {t("remove")}
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          <OrderSummary subtotal={summary.subtotal} shipping={summary.shipping} total={summary.total} />
+          {!order && (
+            <Link href="/cart/" className="mt-6 block text-center text-xs uppercase tracking-[0.2em] text-chocolate/60 hover:text-gold">
+              {t("editCart")}
+            </Link>
+          )}
+        </aside>
+        {!order && !editing && !adding && (
+          <>
+            {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
+            <div className="text-center">
+              {!offered.length ? (
+                <p className="text-sm text-chocolate/70">{t("noPaymentMethods")}</p>
+              ) : method === "cod" ? (
+                <>
+                  <button type="button" onClick={handlePay} disabled={busy || !selectedId} className="btn btn-primary w-full">
+                    {busy && <Spinner />}
+                    {busy ? t("pleaseWait") : t("placeOrder", { amount: formatPrice(cart.total) })}
+                  </button>
+                  <p className="mt-3 text-xs text-chocolate/60">{t("codNote", { amount: formatPrice(cart.total) })}</p>
+                </>
+              ) : (
+                <>
+                  <PayButton onClick={handlePay} disabled={busy || !selectedId} pending={busy}>
+                    {busy ? t("pleaseWait") : t("pay", { amount: formatPrice(cart.total) })}
+                  </PayButton>
+                  <SecurePaymentBadge className="mx-auto mt-4" />
+                </>
               )}
-            </li>
-          ))}
-        </ul>
-        <OrderSummary subtotal={summary.subtotal} shipping={summary.shipping} total={summary.total} />
-        {!order && (
-          <Link href="/cart/" className="mt-6 block text-center text-xs uppercase tracking-[0.2em] text-chocolate/60 hover:text-gold">
-            {t("editCart")}
-          </Link>
+              {offered.length > 0 && (
+                <p className="mt-2 text-xs text-chocolate/60">
+                  {t.rich("agreePolicy", {
+                    link: (chunks) => (
+                      <Link href="/refund-policy/" target="_blank" className="text-gold underline-offset-4 hover:underline">
+                        {chunks}
+                      </Link>
+                    ),
+                  })}
+                </p>
+              )}
+            </div>
+          </>
         )}
-      </aside>
+      </div>
     </div>
+  );
+}
+
+// The picture on each payment method tile: a card or cash
+function MethodIcon({ method }: { method: PaymentMethod }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      {method === "razorpay" ? (
+        <path d="M3 6h18v12H3zM3 10h18M7 15h3" />
+      ) : (
+        <path d="M2 7h20v10H2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 12h.01M18 12h.01" />
+      )}
+    </svg>
   );
 }
 

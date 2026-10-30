@@ -10,15 +10,15 @@ export default async function ProductReviews({ slug, summary, reviews }: { slug:
   const t = await getTranslations("products.reviews");
 
   return (
-    <section id="reviews" className="mx-auto max-w-7xl scroll-mt-28 px-5 pb-20 md:px-8">
-      <div className="border-t border-chocolate/10 pt-14">
+    <section id="reviews" className="mx-auto max-w-7xl scroll-mt-28 px-5 pb-12 md:pb-20 md:px-8">
+      <div className="border-t border-chocolate/10 pt-8 md:pt-14">
         <p className="eyebrow">{t("eyebrow")}</p>
         <h2 className="mt-3 text-3xl font-light">{t("title")}</h2>
 
-        <div className="mt-10 grid gap-12 lg:grid-cols-[20rem_1fr] lg:gap-16">
+        <div className="mt-6 md:mt-10 grid gap-8 md:gap-12 lg:grid-cols-[20rem_1fr] lg:gap-16">
           <div className="h-fit lg:sticky lg:top-28">
             {summary.count > 0 && (
-              <div className="mb-8">
+              <div className="mb-6 md:mb-8">
                 <div className="flex items-end gap-3">
                   <span className="text-5xl font-light">{summary.average.toFixed(1)}</span>
                   <span className="pb-1.5">

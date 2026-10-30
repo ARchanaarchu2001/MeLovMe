@@ -18,7 +18,7 @@ export default async function Home() {
       {/* Hero */}
       <section className="relative overflow-hidden bg-chocolate text-ivory">
         <LeafArt className="animate-sway pointer-events-none absolute -left-10 bottom-0 h-[420px] w-auto text-gold/25" />
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 md:grid-cols-2 md:px-8 md:py-28">
+        <div className="mx-auto grid max-w-7xl items-center gap-8 md:gap-12 px-5 py-12 md:grid-cols-2 md:px-8 md:py-28">
           <div className="relative z-10">
             <p className="eyebrow animate-fade-up">{t("hero.eyebrow")}</p>
             <h1
@@ -36,7 +36,7 @@ export default async function Home() {
             >
               {t("hero.text")}
             </p>
-            <div className="animate-fade-up mt-10 flex flex-wrap gap-4" style={{ animationDelay: "450ms" }}>
+            <div className="animate-fade-up mt-6 md:mt-10 flex flex-wrap gap-4" style={{ animationDelay: "450ms" }}>
               <Link href="/products/" className="btn btn-gold">
                 {t("hero.explore")}
               </Link>
@@ -46,7 +46,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="relative">
-            <div className="animate-zoom-in relative aspect-square overflow-hidden rounded-[2.5rem] shadow-2xl shadow-black/30">
+            <div className="animate-zoom-in relative aspect-[4/3] overflow-hidden md:aspect-square rounded-[2.5rem] shadow-2xl shadow-black/30">
               <Image
                 src="/images/body-lotion-box.webp"
                 alt={t("hero.imageAlt")}
@@ -67,12 +67,12 @@ export default async function Home() {
       </section>
 
       {/* Brand intro */}
-      <section className="mx-auto max-w-4xl px-5 py-24 text-center md:px-8">
+      <section className="mx-auto max-w-4xl px-5 py-12 md:py-24 text-center md:px-8">
         <Reveal>
           <Logo size="lg" className="text-chocolate" />
         </Reveal>
         <Reveal delay={150}>
-          <p className="mx-auto mt-10 max-w-2xl text-lg leading-relaxed text-chocolate/80">
+          <p className="mx-auto mt-6 md:mt-10 max-w-2xl text-lg leading-relaxed text-chocolate/80">
             {t.rich("intro.text", {
               em: (chunks) => <em className="text-gold not-italic">{chunks}</em>,
             })}
@@ -82,7 +82,7 @@ export default async function Home() {
 
       {/* Values */}
       <section className="bg-ivory">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-20 sm:grid-cols-2 md:px-8 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-7xl gap-6 md:gap-10 px-5 py-12 md:py-20 sm:grid-cols-2 md:px-8 lg:grid-cols-4">
           {values.map((v, i) => (
             <Reveal key={v.key} delay={i * 120} className="group text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-gold/60 text-gold transition-all duration-500 group-hover:-translate-y-1 group-hover:rotate-12 group-hover:bg-gold group-hover:text-espresso">
@@ -96,17 +96,17 @@ export default async function Home() {
       </section>
 
       {/* Products */}
-      <section className="mx-auto max-w-7xl px-5 py-24 md:px-8">
-        <Reveal className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+      <section className="mx-auto max-w-7xl px-5 py-12 md:py-24 md:px-8">
+        <Reveal className="flex items-end justify-between gap-4 md:gap-6">
           <div>
             <p className="eyebrow">{t("collection.eyebrow")}</p>
-            <h2 className="mt-4 text-3xl font-light md:text-5xl">{t("collection.title")}</h2>
+            <h2 className="mt-3 text-2xl font-light sm:text-3xl md:mt-4 md:text-5xl">{t("collection.title")}</h2>
           </div>
-          <Link href="/products/" className="btn btn-outline">
+          <Link href="/products/" className="btn btn-outline min-h-0 shrink-0 whitespace-nowrap !px-4 !py-2 !text-[0.65rem] md:min-h-11 md:!px-7 md:!py-3 md:!text-xs">
             {t("collection.viewAll")}
           </Link>
         </Reveal>
-        <div className="mt-14 grid gap-14 md:grid-cols-2">
+        <div className="mt-8 md:mt-14 grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-3 md:gap-x-8 md:gap-y-12">
           {products.map((p, i) => (
             <Reveal key={p.slug} delay={i * 150}>
               <ProductCard product={p} />
@@ -117,7 +117,7 @@ export default async function Home() {
 
       {/* Feature banner */}
       <section className="overflow-hidden bg-espresso text-ivory">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 md:grid-cols-2 md:px-8">
+        <div className="mx-auto grid max-w-7xl items-center gap-8 md:gap-12 px-5 py-12 md:py-20 md:grid-cols-2 md:px-8">
           <Reveal>
             <div className="group relative aspect-[4/3] overflow-hidden rounded-[2rem]">
               <Image
@@ -140,7 +140,7 @@ export default async function Home() {
             <p className="mt-6 max-w-md leading-relaxed text-ivory/70">
               {t("gifting.text")}
             </p>
-            <Link href="/products/signature-gift-set/" className="btn btn-gold mt-10">
+            <Link href="/products/signature-gift-set/" className="btn btn-gold mt-6 md:mt-10">
               {t("gifting.cta")}
             </Link>
           </Reveal>
@@ -148,15 +148,15 @@ export default async function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="mx-auto max-w-7xl px-5 py-24 md:px-8">
+      <section className="mx-auto max-w-7xl px-5 py-12 md:py-24 md:px-8">
         <Reveal className="text-center">
           <p className="eyebrow">{t("testimonialsSection.eyebrow")}</p>
           <h2 className="mt-4 text-3xl font-light md:text-5xl">{t("testimonialsSection.title")}</h2>
         </Reveal>
-        <div className="mt-14 grid gap-8 md:grid-cols-3">
+        <div className="mt-8 md:mt-14 grid gap-6 md:gap-8 md:grid-cols-3">
           {testimonials.map((key, i) => (
             <Reveal key={key} delay={i * 150} className="h-full">
-              <figure className="h-full rounded-[2rem] bg-ivory p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-xl hover:shadow-chocolate/10">
+              <figure className="h-full rounded-[2rem] bg-ivory p-6 md:p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-xl hover:shadow-chocolate/10">
                 <Icon name="sparkle" className="h-6 w-6 text-gold" />
                 <blockquote className="mt-5 leading-relaxed text-chocolate/80">
                   {t("testimonialsSection.quote", { quote: t(`testimonials.${key}.quote`) })}
@@ -172,14 +172,14 @@ export default async function Home() {
       </section>
 
       {/* CTA */}
-      <section className="px-5 pb-24 md:px-8">
-        <Reveal className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-chocolate px-8 py-16 text-center text-ivory md:py-20">
+      <section className="px-5 pb-12 md:pb-24 md:px-8">
+        <Reveal className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-chocolate px-8 py-10 text-center text-ivory md:py-20">
           <LeafArt className="animate-sway pointer-events-none absolute -right-6 -top-10 h-80 w-auto rotate-12 text-gold/20" />
           <h2 className="relative text-3xl font-light md:text-4xl">{t("partner.title")}</h2>
           <p className="relative mx-auto mt-4 max-w-xl text-ivory/70">
             {t("partner.text")}
           </p>
-          <Link href="/contact/" className="btn btn-gold relative mt-8">
+          <Link href="/contact/" className="btn btn-gold relative mt-6 md:mt-8">
             {t("partner.cta")}
           </Link>
         </Reveal>

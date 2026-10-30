@@ -10,7 +10,7 @@ import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Customer" };
 
-const box = "rounded-2xl border border-chocolate/15 p-6";
+const box = "rounded-2xl border border-chocolate/15 p-4 md:p-6";
 const heading = "mb-4 text-xs uppercase tracking-[0.2em] text-chocolate/60";
 
 export default async function AdminCustomerPage({ params }: PageProps<"/admin/customers/[id]">) {
@@ -30,9 +30,9 @@ export default async function AdminCustomerPage({ params }: PageProps<"/admin/cu
       <Link href="/admin/customers/" className="text-xs uppercase tracking-[0.15em] text-chocolate/60 hover:text-gold">
         ← All customers
       </Link>
-      <div className="mb-8 mt-4">
+      <div className="mb-5 mt-3 md:mb-8 md:mt-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-2xl font-medium">{user.name}</h2>
+          <h2 className="text-xl font-medium md:text-2xl">{user.name}</h2>
           {user.superAdmin && <AdminBadge />}
         </div>
         <p className="mt-1 text-sm text-chocolate/70">
@@ -41,7 +41,7 @@ export default async function AdminCustomerPage({ params }: PageProps<"/admin/cu
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-[1fr_22rem]">
         <div className={`${box} h-fit`}>
           <h3 className={heading}>Orders</h3>
           {list.length === 0 ? (
@@ -67,7 +67,7 @@ export default async function AdminCustomerPage({ params }: PageProps<"/admin/cu
           )}
         </div>
 
-        <div className="grid h-fit gap-6">
+        <div className="grid h-fit gap-4 md:gap-6">
           <div className={`${box} text-sm leading-relaxed`}>
             <h3 className={heading}>Saved addresses</h3>
             {user.addresses.length === 0 ? (

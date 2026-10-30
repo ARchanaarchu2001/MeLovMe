@@ -18,16 +18,18 @@ import {
   type ProductInput,
 } from "@/lib/admin-validation";
 import { announcementSpeeds, type Announcement, type AnnouncementMessage } from "@/lib/announcement";
+import { categoryKey, categoryNameError, placementError, tidyCategoryName, type Category } from "@/lib/category";
 import { formatPrice } from "@/lib/format";
 import { placedStatuses, refundState, type Refund } from "@/lib/order";
-import { validatePaymentSettings, type PaymentSettings, type PaymentSettingsErrors } from "@/lib/payments";
+import type { PaymentSettings } from "@/lib/payments";
 import type { Product } from "@/lib/product";
 import type { ReviewInput } from "@/lib/review";
 import { refreshAnnouncement } from "@/lib/server/announcement";
 import { cloudinaryCloudName } from "@/lib/server/cloudinary";
-import { getDb } from "@/lib/server/db";
+import { freeCategorySlug, getDb } from "@/lib/server/db";
+import { syncPendingRefunds } from "@/lib/server/orders";
 import { refreshPaymentSettings } from "@/lib/server/payments";
-import { adjustStock, refreshCatalog } from "@/lib/server/products";
+import { adjustStock, loadCategories, refreshCatalog } from "@/lib/server/products";
 import { createRefund } from "@/lib/server/razorpay";
 import { cleanReview, refreshReviews } from "@/lib/server/reviews";
 import { requireAdmin } from "@/lib/server/session";
@@ -91,6 +93,19 @@ export async function markCodPaid(orderId: string): Promise<{ error: string } | 
 
 // Refunds part or all of an online payment through Razorpay, until the order is delivered.
 // Only the refund's status is recorded: the order's delivery status and stock are left as they are.
+// "Check refund status": asks Razorpay about pending refunds, for one order (`orderId`) or all orders.
+// Razorpay is only asked when the admin presses the button.
+export async function checkRefundStatus(
+  orderId?: string,
+): Promise<{ orderId: string; refundId: string; amount: number; status: Refund["status"] | null }[]> {
+  await requireAdmin();
+  const list = await (await getDb()).orders
+    .find({ ...(orderId && { _id: String(orderId) }), "refunds.status": "pending" })
+    .limit(100)
+    .toArray();
+  return syncPendingRefunds(list);
+}
+
 export async function refundOrder(orderId: string, amount: number): Promise<{ error: string } | { ok: true }> {
   await requireAdmin();
   const { orders } = await getDb();
@@ -120,16 +135,12 @@ export async function refundOrder(orderId: string, amount: number): Promise<{ er
 
 // ---------- Payment methods ----------
 
-export async function savePaymentSettings(input: PaymentSettings): Promise<{ errors: PaymentSettingsErrors } | { ok: true }> {
+export async function savePaymentSettings(input: PaymentSettings): Promise<{ ok: true }> {
   await requireAdmin();
   const settings: PaymentSettings = {
     razorpay: input?.razorpay === true,
     cod: input?.cod === true,
-    whatsapp: input?.whatsapp === true,
-    whatsappMessage: text(input?.whatsappMessage),
   };
-  const errors = validatePaymentSettings(settings);
-  if (Object.keys(errors).length) return { errors };
   await (await getDb()).settings.updateOne(
     { _id: "payments" },
     { $set: { ...settings, updatedAt: new Date() } },
@@ -146,12 +157,12 @@ const isOwnImage = (url: string) =>
   /^\/images\/[\w.-]+$/.test(url) ||
   (!!cloudinaryCloudName() && url.startsWith(`https://res.cloudinary.com/${cloudinaryCloudName()}/image/upload/`));
 
-function cleanProduct(input: ProductInput): { product: Omit<Product, "inStock">; errors: ProductErrors } {
+function cleanProduct(input: ProductInput): { product: Omit<Product, "inStock" | "category">; errors: ProductErrors } {
   const o = input?.offer;
   const values: ProductInput = {
     slug: text(input?.slug).toLowerCase(),
     name: text(input?.name),
-    category: text(input?.category),
+    categoryId: text(input?.categoryId),
     size: text(input?.size),
     price: Number(input?.price),
     shortDescription: text(input?.shortDescription),
@@ -173,7 +184,7 @@ function cleanProduct(input: ProductInput): { product: Omit<Product, "inStock">;
   if (!errors.images && !values.images.every(isOwnImage)) errors.images = "One of the images is not valid. Remove it and upload again.";
 
   const { offer, ...rest } = values;
-  const product: Omit<Product, "inStock"> = {
+  const product: Omit<Product, "inStock" | "category"> = {
     ...rest,
     offer: offer && {
       type: offer.type,
@@ -196,6 +207,8 @@ export async function saveProduct(
   await requireAdmin();
   const { product, errors } = cleanProduct(isNew ? { ...input, slug: toSlug(text(input?.name)) } : input);
   if (Object.keys(errors).length) return { errors };
+  const categoryError = await productCategoryError(product.categoryId);
+  if (categoryError) return { errors: { categoryId: categoryError } };
 
   const { products } = await getDb();
   const { slug: base, stock, ...rest } = product;
@@ -252,6 +265,102 @@ export async function deleteProduct(slug: string): Promise<{ ok: true }> {
   }
   refreshCatalog();
   return { ok: true };
+}
+
+// ---------- Categories ----------
+
+// Why a product can't go in this category, or null if it can (any category, at any level)
+async function productCategoryError(id: string) {
+  if (!(await (await getDb()).categories.findOne({ _id: id }))) return "This category no longer exists. Choose another one.";
+  return null;
+}
+
+// Adds a category (`id` null) or renames / moves one. Products stay where they are: they keep
+// the category's id, and a category can hold products and sub-categories at the same time.
+export async function saveCategory(
+  id: string | null,
+  input: { name: string; parentId: string | null },
+): Promise<{ error: string } | { ok: true; category: Category }> {
+  await requireAdmin();
+  const name = tidyCategoryName(text(input?.name));
+  const parentId = text(input?.parentId) || null;
+  const nameError = categoryNameError(name);
+  if (nameError) return { error: nameError };
+
+  const { categories } = await getDb();
+  const all = await loadCategories();
+  const current = id ? all.find((c) => c.id === String(id)) : undefined;
+  if (id && !current) return { error: "This category no longer exists. Reload the page." };
+  const placement = placementError(all, current?.id ?? null, parentId);
+  if (placement) return { error: placement };
+
+  const key = categoryKey(name);
+  const parent = all.find((c) => c.id === parentId);
+  if (all.some((c) => c.parentId === parentId && c.id !== current?.id && categoryKey(c.name) === key)) {
+    return { error: parent ? `“${parent.name}” already has a sub-category called “${name}”.` : `There is already a main category called “${name}”.` };
+  }
+
+  const now = new Date();
+  // Keep the shop link unless the name changes
+  const slug = current && categoryKey(current.name) === key ? current.slug : await freeCategorySlug(categories, name, parent?.slug, current?.id);
+  const saved: Category = { id: current?.id ?? new ObjectId().toHexString(), name, slug, parentId };
+  try {
+    if (current) await categories.updateOne({ _id: saved.id }, { $set: { name, key, slug, parentId, updatedAt: now } });
+    else await categories.insertOne({ _id: saved.id, name, key, slug, parentId, createdAt: now, updatedAt: now });
+  } catch {
+    // The unique indexes: someone else saved the same name (or link name) at the same moment
+    return { error: "Another category with this name was just saved. Reload the page and try again." };
+  }
+  refreshCatalog();
+  return { ok: true, category: saved };
+}
+
+// Only an empty category can be deleted: no sub-categories and no products (hidden ones included)
+export async function deleteCategory(id: string): Promise<{ error: string } | { ok: true }> {
+  await requireAdmin();
+  const { categories, products } = await getDb();
+  const doc = await categories.findOne({ _id: String(id) });
+  if (!doc) return { ok: true }; // already gone
+  const count = await products.countDocuments({ categoryId: doc._id });
+  if (count) {
+    return { error: `There ${count === 1 ? "is 1 product" : `are ${count} products`} in “${doc.name}”. Once you move ${count === 1 ? "it" : "them"} to another category, you can delete this category.` };
+  }
+  const subs = await categories.countDocuments({ parentId: doc._id });
+  if (subs) {
+    const them = subs === 1 ? "it" : "them";
+    return { error: `“${doc.name}” has ${subs === 1 ? "1 sub-category" : `${subs} sub-categories`}. Once you delete ${them} or move ${them} under another category, you can delete this category.` };
+  }
+
+  await categories.deleteOne({ _id: doc._id });
+  // A product or sub-category may have been saved into it at this very moment: then put it back
+  if ((await products.findOne({ categoryId: doc._id })) || (await categories.findOne({ parentId: doc._id }))) {
+    await categories.insertOne(doc).catch(() => {});
+    return { error: `Something was just added to “${doc.name}”. Reload the page and try again.` };
+  }
+  refreshCatalog();
+  return { ok: true };
+}
+
+// "Move to…" in the delete pop-up: the chosen products of `fromId` (`slugs`; hidden ones included)
+// go to `toId`. Products that have left `fromId` in the meantime are left alone.
+export async function moveCategoryProducts(
+  fromId: string,
+  toId: string,
+  slugs: string[],
+): Promise<{ error: string } | { ok: true; moved: number }> {
+  await requireAdmin();
+  const all = await loadCategories();
+  const to = all.find((c) => c.id === String(toId));
+  if (!to) return { error: "Choose the category to move them to." };
+  if (to.id === String(fromId)) return { error: "Choose a different category." };
+  const ids = (Array.isArray(slugs) ? slugs : []).map(String);
+  if (!ids.length) return { error: "Choose the products to move." };
+  const { modifiedCount } = await (await getDb()).products.updateMany(
+    { _id: { $in: ids }, categoryId: String(fromId) },
+    { $set: { categoryId: to.id, updatedAt: new Date() } },
+  );
+  refreshCatalog();
+  return { ok: true, moved: modifiedCount };
 }
 
 // ---------- Announcement bar ----------

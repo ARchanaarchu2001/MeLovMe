@@ -21,7 +21,8 @@ export const MAX_COMBOS = 4;
 export type Product = {
   slug: string; // URL name, e.g. "signature-body-lotion" (fixed once created)
   name: string;
-  category: string;
+  categoryId: string; // see src/lib/category.ts ("" if its category was lost)
+  category: string; // that category's name, for showing
   size: string;
   price: number; // regular price in rupees (MRP)
   shortDescription: string;

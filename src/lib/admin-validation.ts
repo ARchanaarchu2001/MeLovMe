@@ -10,7 +10,7 @@ import { reviewLimits, type ReviewInput } from "@/lib/review";
 
 // What the product form sends. Offer dates are "YYYY-MM-DD" (India time). `stock` is null when
 // editing and the count wasn't touched, so orders paid while the form was open aren't undone.
-export type ProductInput = Omit<Product, "offer" | "inStock"> & {
+export type ProductInput = Omit<Product, "offer" | "inStock" | "category"> & {
   offer: { type: Offer["type"]; value: number; startDate: string; endDate: string } | null;
 };
 export type ProductErrors = Partial<Record<keyof ProductInput | "offerValue" | "offerDates", string>>;
@@ -18,7 +18,6 @@ export type ProductErrors = Partial<Record<keyof ProductInput | "offerValue" | "
 export const productLimits = {
   slug: 60,
   name: 100,
-  category: 50,
   size: 50,
   shortDescription: 300,
   description: 5000,
@@ -38,8 +37,6 @@ const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const HAS_LETTER = /\p{L}/u;
 const HAS_LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
-// Letters, spaces and & , . ' - e.g. "Body Care", "Bath & Body"
-const CATEGORY = /^\p{L}[\p{L}\p{M}\s&,.'-]*$/u;
 
 // The URL name made from a product name, e.g. "Rose Body Mist" → "rose-body-mist"
 export const toSlug = (s: string) =>
@@ -61,7 +58,6 @@ export function validateProduct(p: ProductInput): ProductErrors {
   const L = productLimits;
   const errors: ProductErrors = {};
   const name = p.name.trim();
-  const category = p.category.trim();
   const size = p.size.trim();
   const shortDescription = p.shortDescription.trim();
   const description = p.description.trim();
@@ -75,9 +71,8 @@ export function validateProduct(p: ProductInput): ProductErrors {
   else if (name.length > L.name) errors.name = tooLong(L.name);
   else if (!HAS_LETTER.test(name)) errors.name = "The name must contain letters.";
 
-  if (!category) errors.category = "Enter a category.";
-  else if (category.length > L.category) errors.category = tooLong(L.category);
-  else if (!CATEGORY.test(category)) errors.category = "Use letters only, e.g. Body Care.";
+  // Whether it exists and is a last-level category is checked on the server
+  if (!p.categoryId) errors.categoryId = "Choose a category.";
 
   if (!size) errors.size = "Enter a size, e.g. 50 ml.";
   else if (size.length > L.size) errors.size = tooLong(L.size);

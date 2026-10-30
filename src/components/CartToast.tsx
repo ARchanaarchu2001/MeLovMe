@@ -6,12 +6,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCatalog } from "./CatalogProvider";
-import { onAddedToCart } from "@/lib/cart";
+import { isMobileView, onAddedToCart } from "@/lib/cart";
 
 const SHOW_FOR_MS = 4000;
 
-// "Added to cart" pop-up with a View Cart button, shown whenever a product is added to the cart.
-// Bottom of the screen on phones, top right (under the header) on larger screens.
+// "Added to cart" pop-up with a View Cart button, shown top right (under the header) whenever a
+// product is added to the cart. Larger screens only: phones open the slide-in cart (CartDrawer) instead.
 export default function CartToast() {
   const t = useTranslations("products.toast");
   const pathname = usePathname();
@@ -20,7 +20,7 @@ export default function CartToast() {
   const [added, setAdded] = useState<{ slug: string; key: number } | null>(null);
   const [paused, setPaused] = useState(false);
 
-  useEffect(() => onAddedToCart((slug) => setAdded({ slug, key: Date.now() })), []);
+  useEffect(() => onAddedToCart((slug) => !isMobileView() && setAdded({ slug, key: Date.now() })), []);
 
   // Hide after a few seconds, unless the pointer or keyboard focus is on it
   useEffect(() => {

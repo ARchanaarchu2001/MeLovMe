@@ -18,6 +18,7 @@ const nav = [
   { href: "/admin/orders/", label: "Orders", icon: icon("M6 7h12l-1 13H7L6 7Zm3 0V6a3 3 0 0 1 6 0v1") },
   { href: "/admin/customers/", label: "Customers", icon: icon("M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 7m6 9a7 7 0 0 0-4-6.3") },
   { href: "/admin/products/", label: "Products", icon: icon("M12 3 4 7v10l8 4 8-4V7l-8-4Zm0 0v18M4 7l8 4 8-4") },
+  { href: "/admin/categories/", label: "Categories", icon: icon("M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v6H4zM17 15v6M14 18h6") },
   { href: "/admin/reviews/", label: "Reviews", icon: icon("m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z") },
   { href: "/admin/payments/", label: "Payments", icon: icon("M3 6h18v12H3zM3 10h18M7 15h4") },
   { href: "/admin/announcement/", label: "Announcement bar", icon: icon("M4 10v4h3l6 4V6L7 10H4Zm13-1.5a4 4 0 0 1 0 7M19.5 6a7.5 7.5 0 0 1 0 12") },
@@ -105,7 +106,7 @@ export default function AdminShell({ name, children }: { name: string; children:
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-chocolate/10 bg-cream/95 px-5 backdrop-blur md:px-8 lg:h-20">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-chocolate/10 bg-cream/95 px-4 backdrop-blur md:px-8 lg:h-20">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -116,7 +117,7 @@ export default function AdminShell({ name, children }: { name: string; children:
           >
             {icon("M4 7h16M4 12h16M4 17h16")}
           </button>
-          <h1 className="text-lg font-medium">{current?.label ?? "Admin"}</h1>
+          <h1 className="truncate text-base font-medium md:text-lg">{current?.label ?? "Admin"}</h1>
           {/* Who is signed in */}
           <div className="ml-auto flex items-center gap-3" title={`Signed in as ${name}`}>
             <span className="hidden text-right text-xs leading-tight sm:block">
@@ -132,7 +133,7 @@ export default function AdminShell({ name, children }: { name: string; children:
             <span className="sr-only sm:hidden">Signed in as {name}</span>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-8 md:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 md:px-8 md:py-8">{children}</main>
       </div>
     </div>
   );

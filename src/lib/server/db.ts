@@ -1,7 +1,8 @@
 import "server-only";
-import { MongoClient, type Db, type ObjectId } from "mongodb";
+import { MongoClient, ObjectId, type Collection, type Db } from "mongodb";
 import { seedProducts } from "@/data/seed-products";
 import type { Announcement } from "@/lib/announcement";
+import { categoryKey, categorySlug, tidyCategoryName } from "@/lib/category";
 import type { Address, Fulfillment, OrderStatus, Refund } from "@/lib/order";
 import type { PaymentSettings } from "@/lib/payments";
 import type { Product } from "@/lib/product";
@@ -56,8 +57,11 @@ export type OrderDoc = {
   updatedAt?: Date;
 };
 
-export type ProductDoc = Omit<Product, "slug" | "inStock" | "stock" | "combos"> & {
+export type ProductDoc = Omit<Product, "slug" | "inStock" | "stock" | "combos" | "category"> & {
   _id: string;
+  // Products from before categories had their own list stored the category's name here instead
+  // of `categoryId`. They're linked to a category on startup (see linkLegacyCategories).
+  category?: string;
   combos?: Product["combos"]; // missing on products saved before combos existed
   stock?: number; // missing on products saved before stock counts existed
   inStock?: boolean; // kept in step with stock > 0
@@ -79,6 +83,18 @@ export type ReviewDoc = {
   text: string;
   verified: boolean; // the customer had a paid order with this product when they wrote it
   hidden: boolean; // hidden from the shop by an admin
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// A product category (see src/lib/category.ts). `_id` is a random id that never changes, so
+// renaming or moving a category doesn't touch its products.
+export type CategoryDoc = {
+  _id: string;
+  name: string;
+  key: string; // categoryKey(name): no two categories under the same parent may share it
+  slug: string; // unique; changes when the category is renamed
+  parentId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -114,6 +130,9 @@ async function connect() {
     db.collection("orders").createIndex({ razorpayOrderId: 1 }),
     db.collection("orders").createIndex({ status: 1, createdAt: -1 }),
     db.collection("products").createIndex({ enabled: 1, createdAt: 1 }),
+    db.collection("products").createIndex({ categoryId: 1 }),
+    db.collection("categories").createIndex({ parentId: 1, key: 1 }, { unique: true }),
+    db.collection("categories").createIndex({ slug: 1 }, { unique: true }),
     db.collection("reviews").createIndex({ productSlug: 1, hidden: 1, createdAt: -1 }),
     db.collection("reviews").createIndex({ createdAt: -1 }),
     // One review per customer per product (admin reviews have no userId)
@@ -124,7 +143,8 @@ async function connect() {
   ]);
 
   // First run: copy the starting catalogue in. Spread createdAt so the shop keeps their order.
-  const products = db.collection<ProductDoc>("products");
+  // They have category names; linkLegacyCategories (below) makes categories from those.
+  const products = db.collection<Omit<ProductDoc, "categoryId">>("products");
   if ((await products.estimatedDocumentCount()) === 0) {
     const start = Date.now();
     await products
@@ -142,7 +162,52 @@ async function connect() {
       )
       .catch(() => {}); // another request may have seeded at the same moment
   }
+  await linkLegacyCategories(db);
   return db;
+}
+
+// A slug no other category has: the name's, then with the parent's in front ("men-gift-sets"),
+// then with -2, -3…
+export async function freeCategorySlug(categories: Collection<CategoryDoc>, name: string, parentSlug?: string, exceptId?: string) {
+  const base = categorySlug(name);
+  const tries = [base, ...(parentSlug ? [`${parentSlug}-${base}`] : [])];
+  const taken = async (slug: string) => !!(await categories.findOne({ slug, ...(exceptId && { _id: { $ne: exceptId } }) }));
+  for (const slug of tries) if (!(await taken(slug))) return slug;
+  const last = tries[tries.length - 1];
+  for (let n = 2; ; n++) if (!(await taken(`${last}-${n}`))) return `${last}-${n}`;
+}
+
+// Products from before categories had their own list have the category's name instead of an id.
+// Each such name becomes a main category (unless there is one by that name already) and the
+// products are linked to it. Does nothing once every product is linked.
+async function linkLegacyCategories(db: Db) {
+  const products = db.collection<ProductDoc>("products");
+  const categories = db.collection<CategoryDoc>("categories");
+  const names: unknown[] = await products.distinct("category", { categoryId: { $exists: false } });
+  for (const raw of names) {
+    if (typeof raw !== "string") continue;
+    const name = tidyCategoryName(raw) || "Uncategorised";
+    const key = categoryKey(name);
+    let id = (await categories.findOne({ parentId: null, key }))?._id;
+    if (!id) {
+      const now = new Date();
+      const doc: CategoryDoc = {
+        _id: new ObjectId().toHexString(),
+        name,
+        key,
+        slug: await freeCategorySlug(categories, name),
+        parentId: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      // Another request may be doing this at the same moment: then use the one it made
+      id = await categories.insertOne(doc).then(
+        () => doc._id,
+        async () => (await categories.findOne({ parentId: null, key }))?._id,
+      );
+    }
+    if (id) await products.updateMany({ categoryId: { $exists: false }, category: raw }, { $set: { categoryId: id }, $unset: { category: "" } });
+  }
 }
 
 export async function getDb() {
@@ -157,6 +222,7 @@ export async function getDb() {
     otps: db.collection<OtpDoc>("otps"),
     orders: db.collection<OrderDoc>("orders"),
     products: db.collection<ProductDoc>("products"),
+    categories: db.collection<CategoryDoc>("categories"),
     settings: db.collection<SettingsDoc>("settings"),
     reviews: db.collection<ReviewDoc>("reviews"),
   };

@@ -7,23 +7,15 @@ import { useState } from "react";
 import CartButton from "./CartButton";
 import { useCatalog } from "./CatalogProvider";
 import PayButton from "./PayButton";
-import { whatsappUrl } from "@/data/site";
 import { MAX_QTY, addToCart, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
-import { whatsappProductMessage } from "@/lib/payments";
 import { LOW_STOCK, activeCombos, maxQtyFor, priceOf, type Product } from "@/lib/product";
 
 // Product page buttons: Add to Cart (a quantity stepper and Go to Cart once it's in the cart) and
 // Buy Now, or an out-of-stock message instead. Above them: "In stock", or "Only 3 left" when low.
 // Products with combo offers get a "1 Piece / 2 Pieces / 3 Pieces" picker instead of the stepper.
-// `whatsappMessage`: the shop's WhatsApp message (from /admin/payments), or null when the
-// "Buy on WhatsApp" button is switched off
-export default function AddToCart({ slug, inStock, stock, whatsappMessage }: {
-  slug: string;
-  inStock: boolean;
-  stock: number | null;
-  whatsappMessage: string | null;
-}) {
+// `razorpay`: online payment is switched on, so Buy Now shows Razorpay's badges
+export default function AddToCart({ slug, inStock, stock, razorpay }: { slug: string; inStock: boolean; stock: number | null; razorpay: boolean }) {
   const t = useTranslations("products");
   const router = useRouter();
   const product = useCatalog().get(slug);
@@ -32,18 +24,13 @@ export default function AddToCart({ slug, inStock, stock, whatsappMessage }: {
   const combos = product ? activeCombos(product).filter((c) => c.qty <= maxQtyFor(product, MAX_QTY)) : [];
   const [picked, setPicked] = useState(1);
 
-  const whatsapp = product && whatsappMessage !== null && (
-    <WhatsAppButton product={product} message={whatsappMessage} label={inStock ? t("buyOnWhatsapp") : t("askOnWhatsapp")} hint={t("whatsappHint")} />
-  );
-
   if (!inStock) {
     return (
-      <div className="mt-10">
+      <div className="mt-6 md:mt-10">
         <span className="inline-block rounded-full bg-red-700/10 px-5 py-2 text-xs uppercase tracking-[0.2em] text-red-800">
           {t("outOfStock")}
         </span>
         <p className="mt-3 text-sm text-chocolate/70">{t("outOfStockText")}</p>
-        {whatsapp && <div className="mt-5 max-w-md">{whatsapp}</div>}
       </div>
     );
   }
@@ -59,15 +46,15 @@ export default function AddToCart({ slug, inStock, stock, whatsappMessage }: {
   };
 
   return (
-    <div className="mt-10">
+    <div className="mt-6 md:mt-10">
       <p className={`mb-4 flex items-center gap-2 text-sm font-medium ${low ? "text-amber-800" : "text-green-800"}`}>
         <span className={`h-2 w-2 rounded-full ${low ? "bg-amber-600" : "bg-green-700"}`} aria-hidden="true" />
         {low ? t("onlyLeft", { count: stock }) : t("inStock")}
       </p>
       {product && combos.length > 0 && <ComboPicker product={product} combos={combos} picked={picked} onPick={setPicked} />}
-      {/* Add to Cart and WhatsApp side by side (stacked on very narrow phones), Buy Now under them */}
-      <div className="grid max-w-md gap-3">
-        <div className={`grid gap-3 *:w-full *:!px-4 *:!tracking-[0.12em] ${whatsapp ? "min-[400px]:grid-cols-2" : ""}`}>
+      {/* Add to Cart and Buy Now side by side, "Go to cart" under them */}
+      <div className="grid w-full max-w-md grid-cols-2 gap-3">
+        <div className="grid *:h-11 *:w-full *:whitespace-nowrap *:!px-3 *:!tracking-[0.1em] md:*:!px-4 md:*:!tracking-[0.15em]">
           {combos.length ? (
             <button type="button" className="btn btn-primary" onClick={() => addToCart(slug, picked, { exact: true })}>
               {inCart && inCart !== picked ? t("combo.updateCart", { count: picked }) : t("addToCart")}
@@ -75,11 +62,10 @@ export default function AddToCart({ slug, inStock, stock, whatsappMessage }: {
           ) : (
             <CartButton slug={slug} />
           )}
-          {whatsapp}
         </div>
-        <PayButton onClick={buyNow}>{t("buyNow")}</PayButton>
+        <PayButton compact onClick={buyNow} razorpay={razorpay}>{t("buyNow")}</PayButton>
         {inCart > 0 && (
-          <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-chocolate/60">
+          <p className="col-span-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-chocolate/60">
             {combos.length > 0 && <span>{t("combo.inCart", { count: inCart })}</span>}
             <Link href="/cart/" className="uppercase tracking-[0.2em] text-gold hover:text-chocolate">
               {t("goToCart")} →
@@ -88,33 +74,6 @@ export default function AddToCart({ slug, inStock, stock, whatsappMessage }: {
         )}
       </div>
     </div>
-  );
-}
-
-// Opens WhatsApp with the shop's message and this product's name, size, today's price and link.
-// `hint` is shown when hovering (it doesn't fit under a half-width button).
-function WhatsAppButton({ product, message, label, hint }: { product: Product; message: string; label: string; hint: string }) {
-  const open = () => {
-    const text = whatsappProductMessage(message, {
-      name: product.name,
-      size: product.size,
-      price: formatPrice(priceOf(product).price),
-      url: `${window.location.origin}/products/${product.slug}/`,
-    });
-    window.open(whatsappUrl(text), "_blank", "noopener,noreferrer");
-  };
-  return (
-    <button
-      type="button"
-      onClick={open}
-      title={hint}
-      className="btn w-full justify-center gap-2 whitespace-nowrap border border-[#25d366] bg-[#25d366]/10 !px-4 !tracking-[0.12em] text-[#075e54] hover:bg-[#25d366] hover:text-white"
-    >
-      <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden="true">
-          <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 2.9 2.9 0 0 0-.9 2.2 5 5 0 0 0 1.1 2.7 11.5 11.5 0 0 0 4.4 3.9c1.6.7 2.3.8 3.1.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z" />
-      </svg>
-      {label}
-    </button>
   );
 }
 
@@ -131,7 +90,7 @@ function ComboPicker({ product, combos, picked, onPick }: {
   const options = [{ qty: 1, price, tag: undefined }, ...combos];
 
   return (
-    <fieldset className="mb-8">
+    <fieldset className="mb-6 md:mb-8">
       <legend className="mb-5 flex w-full items-center gap-4 text-xs font-medium uppercase tracking-[0.25em]">
         <span className="h-px flex-1 bg-chocolate/25" aria-hidden="true" />
         {t("title")}

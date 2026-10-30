@@ -12,7 +12,7 @@ export default function NotFound() {
         <p className="eyebrow">404</p>
         <h1 className="mt-4 text-4xl font-light">{t("title")}</h1>
         <p className="mt-4 text-chocolate/70">{t("text")}</p>
-        <Link href="/" className="btn btn-primary mt-10">{t("backHome")}</Link>
+        <Link href="/" className="btn btn-primary mt-6 md:mt-10">{t("backHome")}</Link>
       </section>
     </ShopChrome>
   );

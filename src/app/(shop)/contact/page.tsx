@@ -22,7 +22,7 @@ export default async function ContactPage() {
   return (
     <>
       <section className="bg-ivory">
-        <div className="mx-auto max-w-7xl px-5 py-20 text-center md:px-8">
+        <div className="mx-auto max-w-7xl px-5 py-12 md:py-20 text-center md:px-8">
           <p className="eyebrow animate-fade-up">{t("hero.eyebrow")}</p>
           <h1 className="animate-fade-up mt-4 text-4xl font-light md:text-6xl" style={{ animationDelay: "150ms" }}>
             {t("hero.title")}
@@ -36,10 +36,10 @@ export default async function ContactPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-14 px-5 py-20 md:grid-cols-5 md:px-8">
+      <section className="mx-auto grid max-w-7xl gap-8 md:gap-14 px-5 py-12 md:py-20 md:grid-cols-5 md:px-8">
         <Reveal className="md:col-span-2">
           <h2 className="text-2xl font-light">{t("details.title")}</h2>
-          <dl className="mt-8 space-y-7">
+          <dl className="mt-6 md:mt-8 space-y-7">
             {details.map((d) => (
               <div key={d.label}>
                 <dt className="eyebrow">{d.label}</dt>
@@ -61,7 +61,7 @@ export default async function ContactPage() {
           </dl>
         </Reveal>
 
-        <Reveal delay={200} className="rounded-[2rem] bg-chocolate p-8 text-ivory md:col-span-3 md:p-12">
+        <Reveal delay={200} className="rounded-[2rem] bg-chocolate p-6 text-ivory md:col-span-3 md:p-12">
           <h2 className="text-2xl font-light">{t("form.title")}</h2>
           <ContactForm />
         </Reveal>

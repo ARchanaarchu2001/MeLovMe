@@ -54,21 +54,21 @@ export async function setRefundStatus(refundId: string, status: Refund["status"]
   );
 }
 
-// Asks Razorpay about refunds still "pending" on this order and saves any change. The webhook
-// normally does this, but it can't reach a computer running the shop locally.
-export async function syncPendingRefunds(order: OrderDoc) {
-  const pending = (order.refunds ?? []).filter((r) => r.status === "pending");
-  await Promise.all(
-    pending.map(async (r) => {
+// Asks Razorpay about refunds still "pending" on these orders and saves any change. Only run when
+// the admin presses "Check refund status" (the webhook updates them by itself on the live site).
+// Returns each refund checked with what Razorpay says now (null: Razorpay couldn't be reached).
+export async function syncPendingRefunds(orders: OrderDoc[]) {
+  const pending = orders.flatMap((o) => (o.refunds ?? []).filter((r) => r.status === "pending").map((r) => ({ orderId: o._id, refund: r })));
+  return Promise.all(
+    pending.map(async ({ orderId, refund: r }) => {
+      let status: Refund["status"] | null = null;
       try {
-        const status = await fetchRefundStatus(r.id);
-        if (status !== r.status) {
-          await setRefundStatus(r.id, status);
-          r.status = status;
-        }
+        status = await fetchRefundStatus(r.id);
+        if (status !== r.status) await setRefundStatus(r.id, status);
       } catch (err) {
         console.error("Checking refund failed", r.id, err);
       }
+      return { orderId, refundId: r.id, amount: r.amount, status };
     }),
   );
 }

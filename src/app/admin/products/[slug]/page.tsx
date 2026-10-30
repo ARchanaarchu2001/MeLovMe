@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import ProductForm from "@/components/admin/ProductForm";
 import { BackLink } from "@/components/admin/ui";
 import { getDb } from "@/lib/server/db";
-import { getCategories, toProduct } from "@/lib/server/products";
+import { categoryNames, loadCategories, toProduct } from "@/lib/server/products";
 import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Edit product" };
@@ -16,8 +16,8 @@ export default async function EditProductPage({ params }: PageProps<"/admin/prod
   await requireAdmin(`/admin/products/${encodeURIComponent(slug)}/`);
   const doc = await (await getDb()).products.findOne({ _id: slug });
   if (!doc) notFound();
-  const p = toProduct(doc);
-  const categories = await getCategories();
+  const categories = await loadCategories();
+  const p = toProduct(doc, categoryNames(categories));
 
   return (
     <div>

@@ -22,9 +22,9 @@ export default async function ProfilePage() {
   const since = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" }).format(user.createdAt);
 
   return (
-    <section className="mx-auto max-w-2xl px-5 py-12 md:py-20">
+    <section className="mx-auto max-w-2xl px-5 py-8 md:py-20">
       <p className="eyebrow">{t("eyebrow")}</p>
-      <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">{t("profile.title")}</h1>
+      <h1 className="mb-6 md:mb-10 mt-4 text-4xl font-light md:text-5xl">{t("profile.title")}</h1>
 
       <ProfileForm name={user.name} phone={user.phone} memberSince={t("profile.memberSince", { date: since })} />
 
@@ -33,7 +33,7 @@ export default async function ProfilePage() {
         <Tile href="/wishlist/" icon={<Icon name="heart" className="h-5 w-5" />} title={t("profile.wishlist")} text={t("profile.wishlistText")} />
       </div>
 
-      <form action={logout} className="mt-10 flex justify-center">
+      <form action={logout} className="mt-6 md:mt-10 flex justify-center">
         <PendingButton className="inline-flex items-center gap-2 rounded-full border border-chocolate/15 px-6 py-2.5 text-xs uppercase tracking-[0.2em] text-chocolate/70 transition-colors hover:border-red-700/40 hover:bg-red-700/5 hover:text-red-800 disabled:opacity-60">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />

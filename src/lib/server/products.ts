@@ -1,13 +1,28 @@
 import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
+import type { Category } from "@/lib/category";
 import type { Product } from "@/lib/product";
-import { getDb, type ProductDoc } from "./db";
+import { getDb, type CategoryDoc, type ProductDoc } from "./db";
 
-// Only these fields go to the browser
-export const toProduct = (d: ProductDoc): Product => ({
+export const toCategory = (d: CategoryDoc): Category => ({ id: d._id, name: d.name, slug: d.slug, parentId: d.parentId });
+
+// All categories, straight from the database (for the admin)
+export async function loadCategories() {
+  return (await (await getDb()).categories.find().toArray()).map(toCategory);
+}
+
+// The same for the shop, cached like the catalogue (admin changes call refreshCatalog())
+export const getCategories = unstable_cache(loadCategories, ["categories"], { tags: ["products"] });
+
+// Category id → name, for toProduct
+export const categoryNames = (categories: Category[]) => new Map(categories.map((c) => [c.id, c.name]));
+
+// Only these fields go to the browser. `names` from categoryNames().
+export const toProduct = (d: ProductDoc, names: Map<string, string>): Product => ({
   slug: d._id,
   name: d.name,
-  category: d.category,
+  categoryId: d.categoryId ?? "",
+  category: names.get(d.categoryId) ?? "",
   size: d.size,
   price: d.price,
   shortDescription: d.shortDescription,
@@ -29,7 +44,11 @@ export const toProduct = (d: ProductDoc): Product => ({
 export const getCatalog = unstable_cache(
   async (): Promise<Product[]> => {
     const { products } = await getDb();
-    return (await products.find({ enabled: true }).sort({ createdAt: 1 }).toArray()).map(toProduct);
+    const [docs, names] = await Promise.all([
+      products.find({ enabled: true }).sort({ createdAt: 1 }).toArray(),
+      loadCategories().then(categoryNames),
+    ]);
+    return docs.map((d) => toProduct(d, names));
   },
   ["catalog"],
   { tags: ["products"] },
@@ -37,12 +56,6 @@ export const getCatalog = unstable_cache(
 
 export async function getCatalogProduct(slug: string) {
   return (await getCatalog()).find((p) => p.slug === slug);
-}
-
-// Categories already in use, offered as choices in the admin product form
-export async function getCategories() {
-  const categories: unknown[] = await (await getDb()).products.distinct("category");
-  return categories.filter((x): x is string => typeof x === "string" && x.trim() !== "").sort((a, b) => a.localeCompare(b));
 }
 
 export function refreshCatalog() {

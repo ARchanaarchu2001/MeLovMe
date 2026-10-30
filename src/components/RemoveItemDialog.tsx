@@ -34,7 +34,7 @@ export default function RemoveItemDialog({
       aria-labelledby="remove-item-title"
       className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-[2rem] bg-cream p-0 text-chocolate backdrop:bg-espresso/50"
     >
-      <div className="relative p-8">
+      <div className="relative p-6 md:p-8">
         <button
           type="button"
           onClick={() => ref.current?.close()}

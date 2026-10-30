@@ -76,7 +76,37 @@ export default async function AdminCustomersPage({ searchParams }: PageProps<"/a
       {list.length === 0 ? (
         <p className="py-16 text-center text-chocolate/60">No customers found.</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-chocolate/15">
+        <>
+        {/* Phones: one card per customer */}
+        <ul className="grid gap-3 md:hidden">
+          {list.map((u) => {
+            const s = stats.get(u._id.toHexString());
+            const city = u.addresses.at(-1)?.city;
+            return (
+              <li key={u._id.toHexString()}>
+                <Link href={`/admin/customers/${u._id.toHexString()}/`} className="block rounded-2xl border border-chocolate/15 p-4 text-sm active:bg-ivory/60">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="flex flex-wrap items-center gap-2 font-medium text-gold">
+                        {u.name}
+                        {u.superAdmin && <AdminBadge />}
+                      </p>
+                      <p className="text-xs text-chocolate/60">+91 {u.phone}{city && <> · {city}</>}</p>
+                    </div>
+                    <p className="shrink-0 text-right">
+                      <span className="block font-medium">{formatPrice(s?.spent ?? 0)}</span>
+                      <span className="block text-xs text-chocolate/60">{s?.count ?? 0} order{s?.count === 1 ? "" : "s"}</span>
+                    </p>
+                  </div>
+                  <p className="mt-2 text-xs text-chocolate/60">
+                    Joined {formatDate(u.createdAt)}{s?.last && <> · Last order {formatDate(s.last)}</>}
+                  </p>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="hidden overflow-x-auto rounded-2xl border border-chocolate/15 md:block">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-ivory text-xs uppercase tracking-[0.15em] text-chocolate/60">
               <tr>
@@ -117,6 +147,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps<"/a
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <Pagination page={page} pageSize={PAGE_SIZE} total={total} href={href} />

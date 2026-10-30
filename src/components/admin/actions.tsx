@@ -65,7 +65,7 @@ export const EyeOffIcon = ({ className = "h-4 w-4" }) => (
 
 // "Delete this …?" in the shop's style. A native <dialog>: Escape closes it and focus stays
 // inside while it's open. Cancel has focus, so Enter doesn't delete by accident.
-export function ConfirmDialog({ title, subject, image, icon, text, confirmLabel, pendingLabel, cancelLabel = "Cancel", pending, onConfirm, onClose }: {
+export function ConfirmDialog({ title, subject, image, icon, text, confirmLabel, pendingLabel, cancelLabel = "Cancel", tone = "danger", pending, onConfirm, onClose }: {
   title: string;
   subject?: string; // e.g. the product's name, under the title
   image?: string;
@@ -74,6 +74,7 @@ export function ConfirmDialog({ title, subject, image, icon, text, confirmLabel,
   confirmLabel: string;
   pendingLabel: string;
   cancelLabel?: string; // the button that closes it without doing anything
+  tone?: "danger" | "neutral"; // red for deleting or refunding; the shop's colours for safe actions
   pending: boolean;
   onConfirm: () => void;
   onClose: () => void;
@@ -95,7 +96,7 @@ export function ConfirmDialog({ title, subject, image, icon, text, confirmLabel,
       aria-labelledby="confirm-title"
       className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-[2rem] bg-cream p-0 text-chocolate backdrop:bg-espresso/50"
     >
-      <div className="relative p-8">
+      <div className="relative p-6 md:p-8">
         <button
           type="button"
           onClick={() => ref.current?.close()}
@@ -109,7 +110,7 @@ export function ConfirmDialog({ title, subject, image, icon, text, confirmLabel,
         </button>
 
         <div className="flex items-center gap-4 pr-8">
-          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-red-700/10 text-red-700">
+          <div className={`relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl ${tone === "danger" ? "bg-red-700/10 text-red-700" : "bg-gold/15 text-gold"}`}>
             {image ? <Image src={image} alt="" fill sizes="64px" className="object-cover" /> : (icon ?? <TrashIcon className="h-6 w-6" />)}
           </div>
           <div className="min-w-0">
@@ -121,7 +122,7 @@ export function ConfirmDialog({ title, subject, image, icon, text, confirmLabel,
         <p className="mt-6 text-sm text-chocolate/75">{text}</p>
 
         <div className="mt-6 grid gap-3">
-          <button type="button" onClick={onConfirm} disabled={pending} className="btn w-full justify-center bg-red-700 text-ivory hover:bg-red-800 disabled:opacity-70">
+          <button type="button" onClick={onConfirm} disabled={pending} className={`btn w-full justify-center disabled:opacity-70 ${tone === "danger" ? "bg-red-700 text-ivory hover:bg-red-800" : "btn-primary"}`}>
             {pending && <Spinner />}
             {pending ? pendingLabel : confirmLabel}
           </button>

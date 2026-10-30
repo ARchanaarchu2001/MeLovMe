@@ -34,7 +34,7 @@ export default function OrderTracker({ status, placedAt, history, courier, track
   if (status === "cancelled") {
     const at = dateOf("cancelled");
     return (
-      <div className="mt-10 rounded-[2rem] border border-red-700/20 bg-red-700/5 px-6 py-5 text-left">
+      <div className="mt-6 md:mt-10 rounded-[2rem] border border-red-700/20 bg-red-700/5 px-6 py-5 text-left">
         <p className="font-medium text-red-800">{t("tracker.cancelledTitle")}</p>
         <p className="mt-1 text-sm text-chocolate/75">{t("tracker.cancelledText")}</p>
         {at && <p className="mt-2 text-xs text-chocolate/55">{when.format(at)}</p>}
@@ -45,7 +45,7 @@ export default function OrderTracker({ status, placedAt, history, courier, track
   const current = steps.indexOf(status);
 
   return (
-    <div className="mt-10 rounded-[2rem] border border-chocolate/15 px-6 py-7 text-left sm:px-8">
+    <div className="mt-6 md:mt-10 rounded-[2rem] border border-chocolate/15 px-6 py-7 text-left sm:px-8">
       <p className="text-xs uppercase tracking-[0.2em] text-chocolate/60">{t("order.status")}</p>
       <p className="mt-1 text-lg font-medium">{t(`tracker.headline.${steps[current]}`)}</p>
 

@@ -1,50 +1,31 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { savePaymentSettings } from "@/app/actions/admin";
 import Spinner from "@/components/Spinner";
-import { WHATSAPP_MESSAGE_MAX, validatePaymentSettings, whatsappProductMessage, type PaymentSettings, type PaymentSettingsErrors } from "@/lib/payments";
+import type { PaymentSettings } from "@/lib/payments";
 
-// Switches for how customers can buy: Razorpay and cash on delivery at checkout, and a
-// "Buy on WhatsApp" button on product pages with a message the shop writes
-type Sample = { name: string; size: string; price: string; url: string; image?: string; description: string };
-
-const fallbackSample: Sample = {
-  name: "Signature Body Lotion",
-  size: "50 ml",
-  price: "₹699",
-  url: "https://melovme.in/products/signature-body-lotion/",
-  description: "A silky, fast-absorbing lotion.",
-};
-
-export default function PaymentSettingsForm({ initial, sample = fallbackSample }: { initial: PaymentSettings; sample?: Sample }) {
+// Switches for how customers can buy at checkout: Razorpay and cash on delivery
+export default function PaymentSettingsForm({ initial }: { initial: PaymentSettings }) {
   const router = useRouter();
   const [v, setV] = useState(initial);
-  const [errors, setErrors] = useState<PaymentSettingsErrors>({});
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const set = <K extends keyof PaymentSettings>(k: K, value: PaymentSettings[K]) => {
     setV((prev) => ({ ...prev, [k]: value }));
-    setErrors({});
     setSaved(false);
   };
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const found = validatePaymentSettings(v);
-    if (Object.keys(found).length) return setErrors(found);
     startTransition(async () => {
-      const res = await savePaymentSettings(v);
-      if ("errors" in res) return setErrors(res.errors);
+      await savePaymentSettings(v);
       setSaved(true);
       router.refresh();
     });
   }
-
-  const preview = whatsappProductMessage(v.whatsappMessage || "…", sample);
 
   return (
     <form onSubmit={handleSubmit} noValidate className="grid max-w-3xl gap-5">
@@ -64,61 +45,10 @@ export default function PaymentSettingsForm({ initial, sample = fallbackSample }
         checked={v.cod}
         onChange={(on) => set("cod", on)}
       />
-      <MethodCard
-        title="Buy on WhatsApp"
-        text="A button on every product page that opens WhatsApp with your message and the product's details, so customers can ask or order by chat."
-        icon={<path d="M3 21l1.7-5A8.5 8.5 0 1 1 8 19.3L3 21Zm6-12.5c0 3.6 2.9 6.5 6.5 6.5l1-1.6-2-1-1 .9a5 5 0 0 1-2.8-2.8l.9-1-1-2-1.6 1Z" />}
-        checked={v.whatsapp}
-        onChange={(on) => set("whatsapp", on)}
-      >
-        {v.whatsapp && (
-          <div className="mt-5 grid gap-4 border-t border-chocolate/10 pt-5 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1.5 block text-xs uppercase tracking-[0.15em] text-chocolate/60">Message</span>
-              <textarea
-                value={v.whatsappMessage}
-                onChange={(e) => set("whatsappMessage", e.target.value)}
-                maxLength={WHATSAPP_MESSAGE_MAX}
-                rows={4}
-                aria-invalid={!!errors.whatsappMessage}
-                className="w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold aria-invalid:border-red-700"
-              />
-              {errors.whatsappMessage ? (
-                <span className="mt-1.5 block text-xs text-red-700">{errors.whatsappMessage}</span>
-              ) : (
-                <span className="mt-1.5 block text-xs text-chocolate/60">The product&apos;s name, size, price and link are added below it.</span>
-              )}
-            </label>
-            <div>
-              <span className="mb-1.5 block text-xs uppercase tracking-[0.15em] text-chocolate/60">What the customer sends</span>
-              {/* A WhatsApp message bubble: the link's preview card (photo, name, site) above the text */}
-              <div className="overflow-hidden rounded-xl rounded-tr-sm bg-[#dcf8c6] p-1 text-[#111b21] shadow-sm">
-                <div className="overflow-hidden rounded-lg bg-[#cfe9ba]">
-                  {sample.image && (
-                    <div className="relative aspect-[1.6] w-full bg-white">
-                      <Image src={sample.image} alt="" fill sizes="320px" className="object-cover" />
-                    </div>
-                  )}
-                  <div className="px-3 py-2">
-                    <p className="truncate text-sm font-medium">{sample.name}</p>
-                    <p className="line-clamp-2 text-xs text-[#111b21]/70">{sample.description}</p>
-                    <p className="mt-0.5 truncate text-[0.7rem] text-[#111b21]/50">{hostOf(sample.url)}</p>
-                  </div>
-                </div>
-                <p className="whitespace-pre-line break-words px-3 py-2 text-sm">{preview}</p>
-              </div>
-              <p className="mt-1.5 text-xs text-chocolate/60">
-                WhatsApp adds the product photo as a preview of the link. It only appears once the shop is live on its own
-                domain, not while testing on localhost.
-              </p>
-            </div>
-          </div>
-        )}
-      </MethodCard>
 
-      {errors.form && (
-        <p className="rounded-xl bg-red-700/10 px-4 py-3 text-sm text-red-800" role="alert">
-          {errors.form}
+      {!v.razorpay && !v.cod && (
+        <p className="rounded-xl bg-amber-600/10 px-4 py-3 text-sm text-amber-900" role="status">
+          Every way to buy is switched off. Customers can still fill their cart, but checkout will ask them to contact you to order.
         </p>
       )}
       <div className="flex flex-wrap items-center gap-4">
@@ -131,14 +61,6 @@ export default function PaymentSettingsForm({ initial, sample = fallbackSample }
     </form>
   );
 }
-
-const hostOf = (url: string) => {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-};
 
 // One payment method: icon, name, what it does and an on/off switch
 function MethodCard({ title, text, icon, checked, onChange, children }: {

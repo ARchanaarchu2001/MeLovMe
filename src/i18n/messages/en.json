@@ -217,10 +217,10 @@
       "title": "Products",
       "description": "Explore the MELOVME collection of premium body-care essentials."
     },
-    "hero": {
-      "eyebrow": "The Collection",
-      "title": "Our Products",
-      "text": "Thoughtfully formulated essentials for skin that feels loved — every single day."
+    "grid": {
+      "count": "{count, plural, one {# product} other {# products}}",
+      "label": "Products per row",
+      "perRow": "{count} per row"
     },
     "detail": {
       "breadcrumbHome": "Home",
@@ -233,14 +233,24 @@
       "viewDetails": "View Details",
       "outOfStock": "Out of Stock"
     },
+    "enquiry": {
+      "button": "Enquire on WhatsApp",
+      "label": "Ask about {name} on WhatsApp",
+      "note": "Questions about this product? Chat with us.",
+      "message": "Hi MELOVME! I'd like to know more about {name} ({size}).\n{link}"
+    },
+    "filter": {
+      "label": "Shop by category",
+      "all": "All",
+      "allIn": "All {name}",
+      "empty": "There are no products in this category right now.",
+      "seeAll": "See all products"
+    },
     "gallery": {
       "showImage": "Show image {number}"
     },
     "addToCart": "Add to Cart",
     "buyNow": "Buy Now",
-    "buyOnWhatsapp": "Buy on WhatsApp",
-    "askOnWhatsapp": "Ask on WhatsApp",
-    "whatsappHint": "Chat with us to order or ask about this product",
     "goToCart": "Go to Cart",
     "combo": {
       "title": "Combo offers",
@@ -336,7 +346,6 @@
     "orderSummary": "Order Summary",
     "checkout": "Checkout",
     "limitedOffer": "Limited Offer",
-    "securePayment": "Secure payment by UPI, cards & netbanking",
     "outOfStock": "Out of stock",
     "outOfStockNote": "Out-of-stock items aren't included in your order.",
     "selectAll": "Select all",
@@ -344,6 +353,11 @@
     "selectLabel": "Select {name} for checkout",
     "noneSelected": "Select at least one item to check out.",
     "comboSaving": "Combo offer: you save {amount}",
+    "drawer": {
+      "title": "Your Cart",
+      "close": "Close cart",
+      "viewCart": "View full cart"
+    },
     "removeDialog": {
       "close": "Close",
       "title": "Remove item?",
@@ -392,7 +406,8 @@
       "pleaseWait": "Please wait…",
       "pay": "Pay {amount}",
       "securedBy": "Secured by",
-      "paymentMethods": "UPI (Google Pay, PhonePe, Paytm), cards and netbanking",
+      "secureTitle": "100% Secure Payment",
+      "secureText": "Protected by Razorpay",
       "paymentMethod": "2. Payment Method",
       "payOnline": "Pay online",
       "payOnlineText": "UPI, cards or netbanking",

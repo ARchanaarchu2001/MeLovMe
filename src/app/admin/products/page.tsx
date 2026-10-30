@@ -9,7 +9,8 @@ import { formatDate } from "@/components/admin/ui";
 import StockEditor from "@/components/admin/StockEditor";
 import { LOW_STOCK, offerStatus } from "@/lib/product";
 import { getDb } from "@/lib/server/db";
-import { toProduct } from "@/lib/server/products";
+import { categoryLabel } from "@/lib/category";
+import { categoryNames, loadCategories, toProduct } from "@/lib/server/products";
 import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Products" };
@@ -18,8 +19,9 @@ export const metadata: Metadata = { title: "Products" };
 export default async function AdminProductsPage({ searchParams }: PageProps<"/admin/products">) {
   await requireAdmin("/admin/products/");
   const { added } = await searchParams;
-  const docs = await (await getDb()).products.find().sort({ createdAt: 1 }).toArray();
-  const all = docs.map(toProduct);
+  const [docs, categories] = await Promise.all([(await getDb()).products.find().sort({ createdAt: 1 }).toArray(), loadCategories()]);
+  const names = categoryNames(categories);
+  const all = docs.map((d) => toProduct(d, names));
   // Just created (the new product form sends us here with ?added=slug)
   const addedProduct = typeof added === "string" ? all.find((p) => p.slug === added) : undefined;
   const outOfStock = all.filter((p) => !p.inStock).length;
@@ -28,7 +30,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps<"/ad
   return (
     <div>
       {addedProduct && <AdminToast key={addedProduct.slug} title="Product added" message={addedProduct.name} />}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 md:mb-6 md:gap-4">
         <p className="text-sm text-chocolate/70">
           {docs.length} product{docs.length === 1 ? "" : "s"} · {docs.filter((d) => d.enabled).length} shown in the shop
           {outOfStock > 0 && <> · <span className="text-red-800">{outOfStock} out of stock</span></>}
@@ -37,20 +39,20 @@ export default async function AdminProductsPage({ searchParams }: PageProps<"/ad
         <Link href="/admin/products/new/" className="btn btn-primary !px-6 !py-3">+ Add product</Link>
       </div>
 
-      <ul className="grid gap-4">
+      <ul className="grid gap-3 md:gap-4">
         {docs.map((d) => {
-          const p = toProduct(d);
+          const p = toProduct(d, names);
           const offer = p.offer;
           const status = offerStatus(offer);
           return (
-            <li key={p.slug} className={`flex flex-wrap items-center gap-5 rounded-2xl border p-4 ${p.enabled ? "border-chocolate/15" : "border-dashed border-chocolate/25 bg-chocolate/[0.03]"}`}>
-              <div className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-ivory ${p.enabled ? "" : "opacity-50"}`}>
+            <li key={p.slug} className={`flex flex-wrap items-center gap-3 rounded-2xl border p-3 md:gap-5 md:p-4 ${p.enabled ? "border-chocolate/15" : "border-dashed border-chocolate/25 bg-chocolate/[0.03]"}`}>
+              <div className={`relative h-16 w-16 shrink-0 overflow-hidden md:h-20 md:w-20 rounded-xl bg-ivory ${p.enabled ? "" : "opacity-50"}`}>
                 {p.images[0] && <Image src={p.images[0]} alt="" fill sizes="80px" className="object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
                 <Link href={`/admin/products/${p.slug}/`} className="font-medium hover:text-gold">{p.name}</Link>
                 <p className="text-xs text-chocolate/60">
-                  {p.category} · {p.size}
+                  {categoryLabel(categories, p.categoryId) || <span className="text-red-800">No category</span>} · {p.size}
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-sm">
                   <Price product={p} />
@@ -63,7 +65,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps<"/ad
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-6">
+              <div className="flex w-full flex-wrap items-center justify-between gap-3 border-t border-chocolate/10 pt-3 md:w-auto md:justify-start md:gap-6 md:border-0 md:pt-0">
                 <ProductToggle slug={p.slug} name={p.name} flag="enabled" value={p.enabled} />
                 <StockEditor slug={p.slug} name={p.name} stock={p.stock} />
                 <ProductActions slug={p.slug} name={p.name} image={p.images[0]} />

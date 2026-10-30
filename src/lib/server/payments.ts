@@ -9,7 +9,7 @@ export const getPaymentSettings = unstable_cache(
   async (): Promise<PaymentSettings> => {
     const doc = (await (await getDb()).settings.findOne({ _id: "payments" })) as PaymentSettingsDoc | null;
     if (!doc) return defaultPaymentSettings;
-    return { razorpay: doc.razorpay, cod: doc.cod, whatsapp: doc.whatsapp, whatsappMessage: doc.whatsappMessage };
+    return { razorpay: doc.razorpay, cod: doc.cod };
   },
   ["payment-settings"],
   { tags: ["payment-settings"] },

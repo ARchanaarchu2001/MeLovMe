@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TrashIcon } from "./Icons";
 import OrderSummary from "./OrderSummary";
-import PayButton from "./PayButton";
+import PayButton, { SecurePaymentBadge } from "./PayButton";
 import QtyStepper from "./QtyStepper";
 import RemoveItemDialog from "./RemoveItemDialog";
 import Price from "./Price";
@@ -16,7 +16,8 @@ import { MAX_QTY, setQty, setSelected, useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { moveToWishlist } from "@/lib/wishlist";
 
-export default function CartView() {
+// `razorpay`: online payment is switched on (/admin/payments), so the button shows Razorpay's badges
+export default function CartView({ razorpay }: { razorpay: boolean }) {
   const t = useTranslations("cart");
   const router = useRouter();
   const { ready, lines, selected, outOfStock, subtotal, shipping, total } = useCart();
@@ -28,15 +29,20 @@ export default function CartView() {
 
   if (lines.length === 0 && outOfStock.length === 0) {
     return (
-      <div className="py-16 text-center">
+      <div className="py-10 md:py-16 text-center">
         <p className="text-chocolate/70">{t("empty")}</p>
-        <Link href="/products/" className="btn btn-primary mt-8">{t("shopProducts")}</Link>
+        <Link href="/products/" className="btn btn-primary mt-6 md:mt-8">{t("shopProducts")}</Link>
       </div>
     );
   }
 
+  // Only when something in the cart is actually on offer (a running offer or a combo price)
+  const tag = selected.some((l) => l.comboSaving > 0 || offerStatus(l.product.offer) === "active") ? t("limitedOffer") : undefined;
+  const goToCheckout = () => router.push("/checkout/");
+
   return (
-    <div className="grid gap-12 lg:grid-cols-[1fr_22rem]">
+    // Bottom padding on phones keeps the last item clear of the sticky checkout bar
+    <div className={`grid gap-8 md:gap-12 lg:grid-cols-[1fr_22rem] ${lines.length > 0 ? "pb-28 lg:pb-0" : ""}`}>
       <div>
         {lines.length > 0 && (
           <div className="flex items-center justify-between gap-4 pb-4 text-sm">
@@ -142,24 +148,41 @@ export default function CartView() {
         </ul>
       </div>
 
-      <aside className="h-fit rounded-[2rem] bg-ivory p-8">
+      <aside className="h-fit rounded-[2rem] bg-ivory p-6 md:p-8">
         <h2 className="mb-6 text-sm uppercase tracking-[0.2em]">{t("orderSummary")}</h2>
         <OrderSummary subtotal={subtotal} shipping={shipping} total={total} />
         {outOfStock.length > 0 && <p className="mt-6 text-xs text-chocolate/60">{t("outOfStockNote")}</p>}
         {lines.length > 0 && selected.length === 0 && <p className="mt-6 text-xs text-chocolate/60">{t("noneSelected")}</p>}
         {lines.length > 0 && (
-          <PayButton
-            className="mt-8"
-            // Only when something in the cart is actually on offer (a running offer or a combo price)
-            tag={selected.some((l) => l.comboSaving > 0 || offerStatus(l.product.offer) === "active") ? t("limitedOffer") : undefined}
-            onClick={() => router.push("/checkout/")}
-            disabled={selected.length === 0}
-          >
+          <PayButton className="mt-6 md:mt-8" tag={tag} onClick={goToCheckout} disabled={selected.length === 0} razorpay={razorpay}>
             {t("checkout")}
           </PayButton>
         )}
-        <p className="mt-4 text-center text-xs text-chocolate/60">{t("securePayment")}</p>
+        {lines.length > 0 && razorpay && <SecurePaymentBadge className="mt-4" />}
       </aside>
+
+      {/* Phones and tablets: the total and Checkout stay pinned to the bottom of the screen while
+          scrolling. Large screens have the summary beside the list instead. */}
+      {lines.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-chocolate/10 bg-cream/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_-12px_rgba(60,35,20,0.25)] backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-xl items-center gap-4">
+            <div className="shrink-0">
+              <p className="text-xs text-chocolate/60">{t("summary.total")}</p>
+              <p className="text-lg font-semibold leading-tight">{formatPrice(total)}</p>
+              <p className="text-[0.65rem] text-chocolate/55">{t("selectedCount", { count: selected.length, total: lines.length })}</p>
+            </div>
+            <PayButton
+              className="!min-h-14 flex-1 !max-w-none"
+              tag={tag}
+              onClick={goToCheckout}
+              disabled={selected.length === 0}
+              razorpay={razorpay}
+            >
+              {t("checkout")}
+            </PayButton>
+          </div>
+        </div>
+      )}
 
       {removing && (
         <RemoveItemDialog

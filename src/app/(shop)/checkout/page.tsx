@@ -21,16 +21,15 @@ export default async function CheckoutPage() {
   const payments = await getPaymentSettings();
 
   return (
-    <section className="mx-auto max-w-7xl px-5 py-12 md:px-8 md:py-16">
+    <section className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-16">
       <p className="eyebrow">{t("eyebrow")}</p>
-      <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">{t("title")}</h1>
+      <h1 className="mb-6 md:mb-10 mt-4 text-4xl font-light md:text-5xl">{t("title")}</h1>
       {/* The key ID is public by design (it identifies the account); the secret stays on the server */}
       <CheckoutFlow
         addresses={addresses}
         user={{ name: user.name, phone: user.phone }}
         razorpayKey={razorpayKeyId()}
-        methods={{ razorpay: payments.razorpay, cod: payments.cod }}
-      />
+        methods={{ razorpay: payments.razorpay, cod: payments.cod }}      />
     </section>
   );
 }

@@ -16,9 +16,9 @@ export default function WishlistView() {
 
   if (products.length === 0) {
     return (
-      <div className="py-16 text-center">
+      <div className="py-10 md:py-16 text-center">
         <p className="text-chocolate/70">{t("empty")}</p>
-        <Link href="/products/" className="btn btn-primary mt-8">{t("shopProducts")}</Link>
+        <Link href="/products/" className="btn btn-primary mt-6 md:mt-8">{t("shopProducts")}</Link>
       </div>
     );
   }

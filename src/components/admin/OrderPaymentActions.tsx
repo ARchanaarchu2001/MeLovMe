@@ -8,6 +8,7 @@ import { onlyDigits } from "@/lib/admin-validation";
 import { formatPrice } from "@/lib/format";
 import type { Refund } from "@/lib/order";
 import { ConfirmDialog } from "./actions";
+import RefundStatusButton from "./RefundStatusButton";
 
 const refundColors: Record<Refund["status"], string> = {
   pending: "bg-sky-700/10 text-sky-900",
@@ -88,6 +89,12 @@ export function RefundPanel({ orderId, refunds, refundable, total, delivered }: 
   return (
     <div className="mt-6 border-t border-chocolate/10 pt-5">
       <h4 className="mb-3 text-xs uppercase tracking-[0.2em] text-chocolate/60">Refunds</h4>
+      {/* Razorpay is only asked when pressed (and confirmed); greyed out when nothing is pending */}
+      {refunds.length > 0 && (
+        <div className="mb-4">
+          <RefundStatusButton orderId={orderId} pending={refunds.filter((r) => r.status === "pending").length} />
+        </div>
+      )}
       {refunds.length > 0 && (
         <ul className="mb-4 divide-y divide-chocolate/10 rounded-xl border border-chocolate/10 text-sm">
           {refunds.map((r) => (

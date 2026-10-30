@@ -17,9 +17,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const t = await getTranslations("auth.page");
 
   return (
-    <section className="mx-auto max-w-md px-5 py-12 md:py-20">
+    <section className="mx-auto max-w-md px-5 py-8 md:py-20">
       <p className="eyebrow">{returnTo.startsWith("/checkout") ? t("eyebrowCheckout") : t("eyebrow")}</p>
-      <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">{t("title")}</h1>
+      <h1 className="mb-6 md:mb-10 mt-4 text-4xl font-light md:text-5xl">{t("title")}</h1>
       <LoginForm next={returnTo} />
     </section>
   );

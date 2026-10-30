@@ -87,7 +87,7 @@ export default function ContactForm() {
     );
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="mt-8 grid gap-5 sm:grid-cols-2">
+    <form onSubmit={handleSubmit} noValidate className="mt-6 md:mt-8 grid gap-5 sm:grid-cols-2">
       <div>
         <input {...props("name")} required autoComplete="name" maxLength={contactLimits.name} placeholder={t("name")} />
         {error("name")}

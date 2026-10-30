@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import ProductGallery from "@/components/ProductGallery";
 import AddToCart from "@/components/AddToCart";
 import ProductCard from "@/components/ProductCard";
+import ProductEnquiry from "@/components/ProductEnquiry";
 import Reveal from "@/components/Reveal";
 import WishlistButton from "@/components/WishlistButton";
 import { Icon } from "@/components/Icons";
@@ -12,8 +13,8 @@ import OfferSticker, { OfferCountdown } from "@/components/OfferSticker";
 import Price from "@/components/Price";
 import ProductReviews from "@/components/ProductReviews";
 import Stars from "@/components/Stars";
-import { getPaymentSettings } from "@/lib/server/payments";
 import { getCatalog, getCatalogProduct } from "@/lib/server/products";
+import { getPaymentSettings } from "@/lib/server/payments";
 import { getProductReviews } from "@/lib/server/reviews";
 
 // Pages for current products are built ahead; products added later render on first visit
@@ -51,20 +52,20 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
   const t = await getTranslations("products.detail");
   const tr = await getTranslations("products.reviews");
   const { summary, reviews } = await getProductReviews(product.slug);
-  const payments = await getPaymentSettings();
+  const { razorpay } = await getPaymentSettings();
 
   const others = (await getCatalog()).filter((p) => p.slug !== product.slug);
 
   return (
     <>
-      <section className="mx-auto max-w-7xl px-5 py-12 md:px-8 md:py-16">
-        <nav className="mb-8 text-xs uppercase tracking-[0.2em] text-chocolate/50">
+      <section className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-16">
+        <nav className="mb-6 md:mb-8 text-xs uppercase tracking-[0.2em] text-chocolate/50">
           <Link href="/" className="hover:text-gold">{t("breadcrumbHome")}</Link> /{" "}
           <Link href="/products/" className="hover:text-gold">{t("breadcrumbProducts")}</Link> /{" "}
           <span className="text-chocolate">{product.name}</span>
         </nav>
 
-        <div className="grid gap-12 md:grid-cols-2 md:gap-16">
+        <div className="grid gap-8 md:grid-cols-2 md:gap-16">
           <div className="relative animate-zoom-in">
             <ProductGallery images={product.images} name={product.name} />
             <WishlistButton slug={product.slug} className="absolute right-5 top-5 z-10" />
@@ -90,9 +91,9 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               <span className="text-sm text-chocolate/60">{product.size}</span>
             </div>
             <OfferCountdown product={product} />
-            <p className="mt-8 leading-relaxed text-chocolate/80">{product.description}</p>
+            <p className="mt-6 md:mt-8 leading-relaxed text-chocolate/80">{product.description}</p>
 
-            <ul className="mt-8 space-y-3">
+            <ul className="mt-6 md:mt-8 space-y-3">
               {product.highlights.map((h) => (
                 <li key={h} className="flex items-start gap-3 text-sm">
                   <Icon name="drop" className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
@@ -105,10 +106,11 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               slug={product.slug}
               inStock={product.inStock}
               stock={product.stock}
-              whatsappMessage={payments.whatsapp ? payments.whatsappMessage : null}
+              razorpay={razorpay}
             />
+            <ProductEnquiry product={product} />
 
-            <div className="mt-12 divide-y divide-chocolate/10 border-y border-chocolate/10">
+            <div className="mt-8 md:mt-12 divide-y divide-chocolate/10 border-y border-chocolate/10">
               <details className="group py-5" open>
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm uppercase tracking-[0.2em]">
                   {t("keyIngredients")} <span className="text-gold transition group-open:rotate-45">+</span>
@@ -134,11 +136,11 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
 
       {others.length > 0 && (
         <section className="bg-ivory">
-          <div className="mx-auto max-w-7xl px-5 py-20 md:px-8">
+          <div className="mx-auto max-w-7xl px-5 py-12 md:py-20 md:px-8">
             <Reveal>
               <h2 className="text-3xl font-light">{t("youMayAlsoLove")}</h2>
             </Reveal>
-            <div className="mt-10 grid gap-14 md:grid-cols-2">
+            <div className="mt-6 md:mt-10 grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-3 md:gap-x-8 md:gap-y-12">
               {others.map((p, i) => (
                 <Reveal key={p.slug} delay={i * 150}>
                   <ProductCard product={p} />

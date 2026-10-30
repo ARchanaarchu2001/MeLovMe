@@ -31,7 +31,7 @@ export default function PolicyPage({ eyebrow, title, intro, updated, updatedLabe
   contact: { title: string; text: string; email: string; whatsapp: string; whatsappMessage: string; orders: string };
 }) {
   return (
-    <section className="mx-auto max-w-4xl px-5 py-12 md:px-8 md:py-20">
+    <section className="mx-auto max-w-4xl px-5 py-8 md:px-8 md:py-20">
       <header className="text-center">
         <p className="eyebrow">{eyebrow}</p>
         <h1 className="mt-4 text-4xl font-light md:text-5xl">{title}</h1>
@@ -40,7 +40,7 @@ export default function PolicyPage({ eyebrow, title, intro, updated, updatedLabe
       </header>
 
       {/* Jump links */}
-      <nav aria-label={title} className="mt-10 flex flex-wrap justify-center gap-2">
+      <nav aria-label={title} className="mt-6 md:mt-10 flex flex-wrap justify-center gap-2">
         {sections.map((s, i) => (
           <a
             key={s.id}
@@ -52,7 +52,7 @@ export default function PolicyPage({ eyebrow, title, intro, updated, updatedLabe
         ))}
       </nav>
 
-      <div className="mt-12 grid gap-6">
+      <div className="mt-8 md:mt-12 grid gap-6">
         {sections.map((s, i) => (
           <article key={s.id} id={s.id} className="scroll-mt-28 rounded-[2rem] border border-chocolate/15 bg-white/30 p-6 sm:p-8">
             <h2 className="flex items-center gap-4 text-xl font-light sm:text-2xl">
@@ -78,7 +78,7 @@ export default function PolicyPage({ eyebrow, title, intro, updated, updatedLabe
         ))}
       </div>
 
-      <aside className="mt-10 rounded-[2rem] bg-espresso px-6 py-8 text-center text-ivory sm:px-10">
+      <aside className="mt-6 md:mt-10 rounded-[2rem] bg-espresso px-6 py-8 text-center text-ivory sm:px-10">
         <h2 className="text-2xl font-light">{contact.title}</h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-ivory/75">{contact.text}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">

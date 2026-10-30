@@ -86,12 +86,12 @@ export function AdminBadge() {
 export function Stat({ label, value, note, href }: { label: string; value: string; note?: string; href?: string }) {
   const body = (
     <>
-      <p className="text-xs uppercase tracking-[0.15em] text-chocolate/60">{label}</p>
-      <p className="mt-1 text-2xl font-medium">{value}</p>
+      <p className="text-[0.65rem] uppercase tracking-[0.15em] text-chocolate/60 md:text-xs">{label}</p>
+      <p className="mt-1 text-xl font-medium md:text-2xl">{value}</p>
       {note && <p className="mt-1 text-xs text-chocolate/60">{note}</p>}
     </>
   );
-  const box = "block rounded-2xl bg-ivory px-5 py-4";
+  const box = "block h-full rounded-2xl bg-ivory px-4 py-3 md:px-5 md:py-4";
   return href ? (
     <Link href={href} className={`${box} transition-colors hover:bg-gold/15`}>
       {body}
@@ -120,7 +120,7 @@ export function Pagination({ page, pageSize, total, href }: { page: number; page
   const off = `${step} cursor-default text-chocolate/30`;
 
   return (
-    <nav className="mt-6 flex flex-wrap items-center justify-between gap-4" aria-label="Pages">
+    <nav className="mt-6 flex flex-wrap items-center justify-center gap-3 sm:justify-between sm:gap-4" aria-label="Pages">
       <p className="text-sm text-chocolate/60">
         Showing {from}–{to} of {total}
       </p>
@@ -166,9 +166,9 @@ export function SearchBox({ action, q, placeholder, hidden = {} }: {
         defaultValue={q}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="min-w-0 flex-1 rounded-full border border-chocolate/20 bg-white/60 px-5 py-2.5 text-sm outline-none focus:border-gold"
+        className="min-w-0 flex-1 rounded-full border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold md:px-5"
       />
-      <button type="submit" className="btn btn-primary !px-5 !py-2.5">Search</button>
+      <button type="submit" className="btn btn-primary min-h-0 !px-4 !py-2.5 md:!px-5">Search</button>
       {q && (
         <Link href={action + (Object.keys(hidden).length ? `?${new URLSearchParams(hidden)}` : "")} className="self-center text-xs uppercase tracking-[0.15em] text-chocolate/60 hover:text-gold">
           Clear

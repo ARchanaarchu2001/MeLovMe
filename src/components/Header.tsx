@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import Logo from "./Logo";
 import { CartIcon, Icon, LeafArt, SocialIcon, UserIcon } from "./Icons";
 import { navLinks, site, socialLinks, whatsappUrl } from "@/data/site";
-import { useCart } from "@/lib/cart";
+import { isMobileView, openCartDrawer, useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 
 export default function Header() {
@@ -79,14 +79,22 @@ export default function Header() {
           <div className="flex items-center gap-2 md:gap-5">
             {[
               { href: "/wishlist/", label: t("header.wishlist"), count: wishCount, icon: <Icon name="heart" className="h-5 w-5" /> },
-              { href: "/cart/", label: t("header.cart"), count, icon: <CartIcon /> },
+              // On phones, opens the slide-in cart, except on the cart and checkout pages themselves
+              { href: "/cart/", label: t("header.cart"), count, icon: <CartIcon />, drawer: !/^\/(cart|checkout)/.test(pathname) },
               // Logged-out visitors are sent on to the login page
               { href: "/profile/", label: t("header.account"), count: 0, icon: <UserIcon />, desktopOnly: true },
             ].map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                onClick={() => setOpen(false)}
+                onClick={(e) => {
+                  setOpen(false);
+                  // A plain tap on a phone opens the drawer; elsewhere (and ctrl/cmd-click) it's the cart page
+                  if ("drawer" in l && l.drawer && isMobileView() && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+                    e.preventDefault();
+                    openCartDrawer();
+                  }
+                }}
                 aria-label={l.count > 0 ? t("header.itemCount", { label: l.label, count: l.count }) : l.label}
                 className={`relative h-11 w-11 items-center justify-center rounded-full border border-chocolate/20 text-chocolate transition-colors hover:border-gold hover:text-gold ${
                   l.desktopOnly ? "hidden md:flex" : "flex"
@@ -132,7 +140,7 @@ export default function Header() {
       >
         <LeafArt className="pointer-events-none absolute -right-10 bottom-10 h-80 w-auto text-gold/15" />
 
-        <nav className="relative px-6 pt-10">
+        <nav className="relative px-6 pt-6">
           <ul className="space-y-1">
             {links.map((l, i) => (
               <li
@@ -144,7 +152,7 @@ export default function Header() {
                   href={l.href}
                   onClick={() => setOpen(false)}
                   aria-current={isActive(l.href) ? "page" : undefined}
-                  className={`flex items-center justify-between border-b border-ivory/10 py-5 text-2xl font-light ${
+                  className={`flex items-center justify-between border-b border-ivory/10 py-4 text-xl font-light ${
                     isActive(l.href) ? "text-gold" : ""
                   }`}
                 >
@@ -156,7 +164,7 @@ export default function Header() {
           </ul>
 
           <div
-            className={`mt-10 transition-all duration-500 ${open ? "opacity-100" : "opacity-0"}`}
+            className={`mt-6 transition-all duration-500 ${open ? "opacity-100" : "opacity-0"}`}
             style={{ transitionDelay: open ? "500ms" : "0ms" }}
           >
             <Link href="/products/" onClick={() => setOpen(false)} className="btn btn-gold w-full">
@@ -172,7 +180,7 @@ export default function Header() {
               </Link>
             </div>
 
-            <div className="mt-10 space-y-2 text-sm text-ivory/70">
+            <div className="mt-6 space-y-2 text-sm text-ivory/70">
               <a href={`mailto:${site.email}`} className="block hover:text-gold">{site.email}</a>
               <a
                 href={whatsappUrl(t("whatsappMessage"))}

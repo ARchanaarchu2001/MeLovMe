@@ -8,12 +8,11 @@ import { PaymentBadge, RefundBadge, formatDateTime, paymentLabel } from "@/compo
 import { formatPrice } from "@/lib/format";
 import { isPlaced, refundState } from "@/lib/order";
 import { getDb } from "@/lib/server/db";
-import { syncPendingRefunds } from "@/lib/server/orders";
 import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Order" };
 
-const box = "rounded-2xl border border-chocolate/15 p-6";
+const box = "rounded-2xl border border-chocolate/15 p-4 md:p-6";
 const heading = "mb-4 text-xs uppercase tracking-[0.2em] text-chocolate/60";
 
 export default async function AdminOrderPage({ params }: PageProps<"/admin/orders/[id]">) {
@@ -22,8 +21,6 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
   const { orders, users } = await getDb();
   const order = await orders.findOne({ _id: id });
   if (!order) notFound();
-  // Refunds Razorpay hasn't reported back on yet (the webhook can't reach a local computer)
-  await syncPendingRefunds(order);
   const customer = await users.findOne({ _id: order.userId }, { projection: { name: 1, phone: 1 } });
   const a = order.address;
   const cod = order.paymentMethod === "cod";
@@ -36,8 +33,8 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
       <Link href="/admin/orders/" className="text-xs uppercase tracking-[0.15em] text-chocolate/60 hover:text-gold">
         ← All orders
       </Link>
-      <div className="mb-8 mt-4 flex flex-wrap items-center gap-4">
-        <h2 className="text-2xl font-medium">{order._id}</h2>
+      <div className="mb-5 mt-3 flex flex-wrap items-center gap-2 md:mb-8 md:mt-4 md:gap-4">
+        <h2 className="break-all text-xl font-medium md:text-2xl">{order._id}</h2>
         <PaymentBadge status={order.status} />
         <RefundBadge order={order} />
         <span className="text-sm text-chocolate/60">Placed {formatDateTime(order.createdAt)}</span>
@@ -51,8 +48,8 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
         </p>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
-        <div className="grid h-fit gap-6">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-[1fr_24rem]">
+        <div className="grid h-fit gap-4 md:gap-6">
           <div className={box}>
             <h3 className={heading}>Items</h3>
             <ul className="mb-6 space-y-3 border-b border-chocolate/15 pb-6 text-sm">
@@ -69,7 +66,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
             <OrderSummary subtotal={order.subtotal} shipping={order.shipping} total={order.total} />
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 md:gap-6">
             <div className={`${box} text-sm leading-relaxed`}>
               <h3 className={heading}>Ship to</h3>
               <p className="font-medium">{a.name}</p>

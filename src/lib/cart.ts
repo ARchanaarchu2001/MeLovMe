@@ -29,7 +29,25 @@ export function setSelected(slugs: string[], selected: boolean) {
   unselectedStore.set(selected ? rest : [...rest, ...slugs]);
 }
 
-// The "added to cart" pop-up (CartToast) listens here
+// Phones (below Tailwind's md) get the slide-in cart; larger screens use the cart page and the
+// "added to cart" pop-up (CartToast) instead
+export const isMobileView = () => window.matchMedia("(max-width: 767px)").matches;
+
+// The slide-in cart (CartDrawer) opens on this, from the header's cart icon
+const drawerListeners = new Set<() => void>();
+
+export function openCartDrawer() {
+  drawerListeners.forEach((l) => l());
+}
+
+export function onOpenCartDrawer(listener: () => void) {
+  drawerListeners.add(listener);
+  return () => {
+    drawerListeners.delete(listener);
+  };
+}
+
+// The slide-in cart (CartDrawer, phones) and the "added to cart" pop-up (CartToast, larger screens) listen here
 const addedListeners = new Set<(slug: string) => void>();
 
 export function onAddedToCart(listener: (slug: string) => void) {

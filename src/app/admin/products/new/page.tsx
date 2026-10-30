@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import ProductForm from "@/components/admin/ProductForm";
 import { BackLink } from "@/components/admin/ui";
-import { getCategories } from "@/lib/server/products";
+import { loadCategories } from "@/lib/server/products";
 import { requireAdmin } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "New product" };
 
 export default async function NewProductPage() {
   await requireAdmin("/admin/products/new/");
-  const categories = await getCategories();
+  const categories = await loadCategories();
   return (
     <div>
       <BackLink href="/admin/products/">All products</BackLink>
@@ -19,7 +19,7 @@ export default async function NewProductPage() {
         initial={{
           slug: "",
           name: "",
-          category: "",
+          categoryId: "",
           size: "",
           price: 0,
           shortDescription: "",

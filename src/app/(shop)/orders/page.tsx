@@ -27,14 +27,14 @@ export default async function OrdersPage() {
   const t = await getTranslations("account");
 
   return (
-    <section className="mx-auto max-w-3xl px-5 py-12 md:px-8 md:py-16">
+    <section className="mx-auto max-w-3xl px-5 py-8 md:px-8 md:py-16">
       <p className="eyebrow">{t("eyebrow")}</p>
-      <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">{t("orders.title")}</h1>
+      <h1 className="mb-6 md:mb-10 mt-4 text-4xl font-light md:text-5xl">{t("orders.title")}</h1>
 
       {orders.length === 0 ? (
-        <div className="py-16 text-center">
+        <div className="py-10 md:py-16 text-center">
           <p className="text-chocolate/70">{t("orders.empty")}</p>
-          <Link href="/products/" className="btn btn-primary mt-8">{t("orders.shopProducts")}</Link>
+          <Link href="/products/" className="btn btn-primary mt-6 md:mt-8">{t("orders.shopProducts")}</Link>
         </div>
       ) : (
         <ul className="space-y-5">

@@ -2,8 +2,8 @@ import type { Product } from "@/lib/product";
 
 // The starting catalogue: copied into MongoDB the first time the `products` collection is
 // empty (see src/lib/server/db.ts). After that, products are managed in /admin/products and
-// editing this file changes nothing.
-export const seedProducts: Omit<Product, "enabled" | "inStock" | "stock" | "combos">[] = [
+// editing this file changes nothing. `category` is a name; a category with that name is made for it.
+export const seedProducts: Omit<Product, "enabled" | "inStock" | "stock" | "combos" | "categoryId">[] = [
   {
     slug: "signature-body-lotion",
     name: "Signature Body Lotion",

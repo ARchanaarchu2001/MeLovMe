@@ -3,13 +3,13 @@ import Link from "next/link";
 import Logo from "./Logo";
 import { SocialIcon } from "./Icons";
 import { navLinks, site, socialLinks, whatsappUrl } from "@/data/site";
-import type { Product } from "@/lib/product";
+import type { Category } from "@/lib/category";
 
-export default function Footer({ products }: { products: Product[] }) {
+export default function Footer({ categories }: { categories: Category[] }) {
   const t = useTranslations("common");
   return (
     <footer className="bg-espresso text-ivory">
-      <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 md:grid-cols-4 md:px-8">
+      <div className="mx-auto grid max-w-7xl gap-8 md:gap-12 px-5 py-10 md:py-16 md:grid-cols-4 md:px-8">
         <div className="md:col-span-1">
           <Logo size="md" className="text-ivory" />
           <p className="mt-6 max-w-xs text-sm leading-relaxed text-ivory/70">
@@ -33,10 +33,10 @@ export default function Footer({ products }: { products: Product[] }) {
         <div>
           <h3 className="eyebrow mb-5">{t("footer.products")}</h3>
           <ul className="space-y-3 text-sm text-ivory/80">
-            {products.map((p) => (
-              <li key={p.slug}>
-                <Link href={`/products/${p.slug}/`} className="hover:text-gold">
-                  {p.name}
+            {categories.map((c) => (
+              <li key={c.id}>
+                <Link href={`/products/?category=${encodeURIComponent(c.slug)}`} className="hover:text-gold">
+                  {c.name}
                 </Link>
               </li>
             ))}

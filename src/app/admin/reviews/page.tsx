@@ -63,19 +63,19 @@ export default async function AdminReviewsPage({ searchParams }: PageProps<"/adm
 
   return (
     <div>
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-5 grid grid-cols-3 gap-2 md:mb-6 md:gap-4">
         <Stat label="By customers" value={String(counts[1])} href={href({ view: "customer" })} />
         <Stat label="Added by admin" value={String(counts[2])} href={href({ view: "admin" })} />
         <Stat label="Hidden from shop" value={String(counts[3])} href={href({ view: "hidden" })} />
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 md:gap-4">
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
           {views.map((v, i) => (
             <Link
               key={v.key}
               href={href({ view: v.key })}
-              className={`rounded-full px-4 py-1.5 text-xs uppercase tracking-[0.15em] ${
+              className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs uppercase tracking-[0.15em] ${
                 v.key === view.key ? "bg-gold/25 text-chocolate" : "text-chocolate/60 hover:text-gold"
               }`}
             >
@@ -86,7 +86,7 @@ export default async function AdminReviewsPage({ searchParams }: PageProps<"/adm
         <Link href="/admin/reviews/new/" className="btn btn-primary !px-6 !py-3">+ Add review</Link>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-4">
+      <div className="mb-5 flex flex-wrap items-center gap-3 md:mb-6 md:gap-4">
         <SearchBox action="/admin/reviews/" q={q} placeholder="Name or review text" hidden={{ view: view.key, ...(product && { product }) }} />
         <ReviewProductFilter
           products={productList.map((p) => ({ slug: p._id, name: p.name, image: p.images?.[0], count: reviewCount.get(p._id) ?? 0 }))}
@@ -99,13 +99,13 @@ export default async function AdminReviewsPage({ searchParams }: PageProps<"/adm
       {list.length === 0 ? (
         <p className="py-16 text-center text-chocolate/60">No reviews found.</p>
       ) : (
-        <ul className="grid gap-4">
+        <ul className="grid gap-3 md:gap-4">
           {list.map((r) => {
             const account = r.userId && accounts.get(r.userId.toHexString());
             return (
               <li
                 key={r._id.toHexString()}
-                className={`rounded-2xl border p-5 ${r.hidden ? "border-dashed border-chocolate/25 bg-chocolate/[0.03]" : "border-chocolate/15"}`}
+                className={`rounded-2xl border p-4 md:p-5 ${r.hidden ? "border-dashed border-chocolate/25 bg-chocolate/[0.03]" : "border-chocolate/15"}`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className={`min-w-0 flex-1 ${r.hidden ? "opacity-60" : ""}`}>

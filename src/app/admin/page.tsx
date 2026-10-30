@@ -43,21 +43,21 @@ export default async function AdminDashboard() {
   ]);
 
   return (
-    <div className="grid gap-8">
+    <div className="grid gap-5 md:gap-8">
       <p className="text-chocolate/70">Welcome back, {me.name}.</p>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="To ship" value={String(toShipCount)} note="Paid or cash on delivery, not yet shipped" href="/admin/orders/?view=orders" />
+      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
+        <Stat label="To ship" value={String(toShipCount)} note="Paid or cash on delivery, not yet shipped" href="/admin/orders/" />
         <Stat label="Today" value={formatPrice(todaySales.total)} note={`${todaySales.count} order${todaySales.count === 1 ? "" : "s"}`} />
         <Stat label="Last 30 days" value={formatPrice(monthSales.total)} note={`${monthSales.count} order${monthSales.count === 1 ? "" : "s"}`} />
         <Stat label="Customers" value={String(totalCustomers)} note={`${newCustomers} new this week`} href="/admin/customers/" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="rounded-2xl border border-chocolate/15 p-6">
+        <section className="rounded-2xl border border-chocolate/15 p-4 md:p-6">
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-xs uppercase tracking-[0.2em] text-chocolate/60">Needs shipping</h2>
-            <Link href="/admin/orders/?view=orders" className="text-xs uppercase tracking-[0.15em] text-gold hover:underline">All orders</Link>
+            <Link href="/admin/orders/" className="text-xs uppercase tracking-[0.15em] text-gold hover:underline">All orders</Link>
           </div>
           {toShip.length === 0 ? (
             <p className="py-6 text-center text-sm text-chocolate/60">Nothing to ship right now.</p>
@@ -66,7 +66,7 @@ export default async function AdminDashboard() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-chocolate/15 p-6">
+        <section className="rounded-2xl border border-chocolate/15 p-4 md:p-6">
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-xs uppercase tracking-[0.2em] text-chocolate/60">Latest orders</h2>
             <Link href="/admin/orders/" className="text-xs uppercase tracking-[0.15em] text-gold hover:underline">View all</Link>
@@ -79,11 +79,11 @@ export default async function AdminDashboard() {
         </section>
       </div>
 
-      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-ivory px-6 py-5">
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-ivory px-4 py-4 md:px-6 md:py-5">
         <p className="text-sm">
           <strong>{productsOn}</strong> of {productsAll} product{productsAll === 1 ? "" : "s"} shown in the shop
         </p>
-        <div className="flex flex-wrap gap-3">
+        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto">
           <Link href="/admin/products/" className="btn btn-outline !px-5 !py-2.5">Manage products</Link>
           <Link href="/admin/products/new/" className="btn btn-primary !px-5 !py-2.5">+ Add product</Link>
         </div>
@@ -104,7 +104,7 @@ function OrderRows({ orders }: { orders: OrderDoc[] }) {
                 {o.address.name} · {formatDateTime(o.paidAt ?? o.createdAt)}
               </span>
             </span>
-            <span className="flex items-center gap-3">
+            <span className="flex flex-wrap items-center gap-2 md:gap-3">
               <span className="font-medium">{formatPrice(o.total)}</span>
               {o.status === "cod" && <PaymentBadge status="cod" />}
               <FulfillmentBadge status={o.fulfillment ?? "placed"} />

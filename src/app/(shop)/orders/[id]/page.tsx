@@ -30,7 +30,7 @@ export default async function OrderPage({ params }: PageProps<"/orders/[id]">) {
   const refund = refundState(order);
 
   return (
-    <section className="mx-auto max-w-2xl px-5 py-12 md:py-20">
+    <section className="mx-auto max-w-2xl px-5 py-8 md:py-20">
       <div className="text-center">
         <p className="eyebrow">{placed ? t("order.eyebrowPaid") : t("order.eyebrowPending")}</p>
         <h1 className="mt-4 text-4xl font-light md:text-5xl">
@@ -67,7 +67,7 @@ export default async function OrderPage({ params }: PageProps<"/orders/[id]">) {
       {/* Until it ships, the customer can cancel it themselves */}
       {placed && customerCancellable(order.fulfillment) && <CancelOrderButton orderId={order._id} paidOnline={order.status === "paid" && !cod} />}
 
-      <div className="mt-12 grid gap-8 rounded-[2rem] bg-ivory p-8 sm:grid-cols-2">
+      <div className="mt-8 md:mt-12 grid gap-6 md:gap-8 rounded-[2rem] bg-ivory p-6 md:p-8 sm:grid-cols-2">
         <div>
           <h2 className="mb-4 text-sm uppercase tracking-[0.2em]">{t("order.items")}</h2>
           <ul className="space-y-3 text-sm">
@@ -94,7 +94,7 @@ export default async function OrderPage({ params }: PageProps<"/orders/[id]">) {
         </div>
       </div>
 
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
+      <div className="mt-6 md:mt-10 flex flex-wrap items-center justify-center gap-6">
         <Link href="/products/" className="btn btn-primary">{t("order.continueShopping")}</Link>
         <Link href="/orders/" className="text-xs uppercase tracking-[0.2em] text-chocolate/60 hover:text-gold">
           {t("order.allOrders")}

@@ -14,9 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function WishlistPage() {
   const t = useTranslations("cart.wishlist");
   return (
-    <section className="mx-auto max-w-7xl px-5 py-12 md:px-8 md:py-16">
+    <section className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-16">
       <p className="eyebrow">{t("eyebrow")}</p>
-      <h1 className="mb-10 mt-4 text-4xl font-light md:text-5xl">{t("title")}</h1>
+      <h1 className="mb-6 md:mb-10 mt-4 text-4xl font-light md:text-5xl">{t("title")}</h1>
       <WishlistView />
     </section>
   );

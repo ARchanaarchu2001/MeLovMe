@@ -419,6 +419,8 @@ export async function saveBanner(input: Banner): Promise<{ errors: BannerErrors 
     showButtons: input?.showButtons !== false,
     buttonPosition: bannerButtonPositions.includes(input?.buttonPosition) ? input.buttonPosition : "bottom-left",
     buttonStyle: bannerButtonStyles.includes(input?.buttonStyle) ? input.buttonStyle : "light",
+    primaryButton: { label: text(input?.primaryButton?.label), link: text(input?.primaryButton?.link) },
+    secondaryButton: { label: text(input?.secondaryButton?.label), link: text(input?.secondaryButton?.link) },
   };
   const errors = validateBanner(banner);
   // Only pictures uploaded through the admin area (or the shop's own) can be shown

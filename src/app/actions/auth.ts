@@ -22,9 +22,10 @@ const hashOtp = (phone: string, code: string) => createHash("sha256").update(`${
 
 const validPhone = (phone: unknown): phone is string => typeof phone === "string" && /^[6-9]\d{9}$/.test(phone);
 
-// Only allow returning to a page on this site (never "//evil.com")
+// Only allow returning to a page on this site (never "//evil.com"). Browsers read "\" as "/" and drop
+// tabs and line breaks, so "/\evil.com" and "/<tab>/evil.com" also go off-site: refuse both.
 const safeNext = (next: unknown) =>
-  typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/profile/";
+  typeof next === "string" && /^\/(?![/\\])[^\s\\]*$/.test(next) ? next : "/profile/";
 
 export async function devSendOtp(phone: string): Promise<{ error: string } | { ok: true }> {
   const t = await getTranslations("auth.errors");

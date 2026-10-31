@@ -90,19 +90,26 @@ export async function createOrder(
 
   // Only enabled products, at today's price (the offer price while an offer runs)
   const catalog = await getCatalog();
+  // One line per product: a product split over several lines must not get past the stock check or MAX_QTY
+  const merged = new Map<string, number>();
+  for (const i of Array.isArray(cart) ? cart : []) {
+    const qty = Number(i?.qty);
+    if (typeof i?.slug === "string" && Number.isInteger(qty) && qty > 0) merged.set(i.slug, (merged.get(i.slug) ?? 0) + qty);
+  }
+  const lines = [...merged].map(([slug, qty]) => ({ slug, qty }));
   // Stock may have run out since the cart was loaded: stop rather than charge for less than they saw
-  if ((Array.isArray(cart) ? cart : []).some((i) => catalog.find((p) => p.slug === i?.slug)?.inStock === false)) {
+  if (lines.some((i) => catalog.find((p) => p.slug === i.slug)?.inStock === false)) {
     return { error: t("outOfStock") };
   }
   // Nor sell more than there are
-  const short = (Array.isArray(cart) ? cart : []).flatMap((i) => {
-    const product = catalog.find((p) => p.slug === i?.slug);
-    return product && product.stock !== null && Number(i?.qty) > product.stock ? [product] : [];
+  const short = lines.flatMap((i) => {
+    const product = catalog.find((p) => p.slug === i.slug);
+    return product && product.stock !== null && i.qty > product.stock ? [product] : [];
   });
   if (short.length) return { error: t("notEnoughStock", { name: short[0].name, count: short[0].stock ?? 0 }) };
-  const items = (Array.isArray(cart) ? cart : []).flatMap((i) => {
-    const product = catalog.find((p) => p.slug === i?.slug);
-    const qty = Math.min(Number(i?.qty), MAX_QTY);
+  const items = lines.flatMap((i) => {
+    const product = catalog.find((p) => p.slug === i.slug);
+    const qty = Math.min(i.qty, MAX_QTY);
     if (!product || !Number.isInteger(qty) || qty < 1) return [];
     const { price } = priceOf(product);
     // Combo offers apply by quantity, worked out here again (never trusted from the browser)

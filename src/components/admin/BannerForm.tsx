@@ -6,7 +6,15 @@ import { saveBanner } from "@/app/actions/admin";
 import HeroBanner from "@/components/HeroBanner";
 import Spinner from "@/components/Spinner";
 import { MAX_IMAGE_MB, hasBannerErrors, validateBanner, type BannerErrors } from "@/lib/admin-validation";
-import { BANNER_ALT_MAX, type Banner, type BannerButtonPosition, type BannerImage } from "@/lib/banner";
+import {
+  BANNER_ALT_MAX,
+  bannerButtonLimits,
+  type Banner,
+  type BannerButton,
+  type BannerButtonPosition,
+  type BannerImage,
+  type LinkGroup,
+} from "@/lib/banner";
 import { IMAGE_TYPES, shrink, uploadToCloudinary } from "@/lib/upload";
 
 const input = "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold";
@@ -38,15 +46,22 @@ const buttonColours = [
 
 type Labels = { heading: string; explore: string; ourStory: string };
 
-// Uploads the home page banner and places the shop's buttons on it
-export default function BannerForm({ initial, labels }: { initial: Banner; labels: Labels }) {
+// Uploads the home page banner, places the shop's buttons on it and sets their text and links
+export default function BannerForm({ initial, labels, links }: { initial: Banner; labels: Labels; links: LinkGroup[] }) {
   const router = useRouter();
-  const [v, setV] = useState<Banner>(initial);
+  // Buttons without their own text start with the usual wording, ready to edit
+  const [v, setV] = useState<Banner>(() => ({
+    ...initial,
+    primaryButton: { ...initial.primaryButton, label: initial.primaryButton.label || labels.explore },
+    secondaryButton: { ...initial.secondaryButton, label: initial.secondaryButton.label || labels.ourStory },
+  }));
   const [errors, setErrors] = useState<BannerErrors>({});
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const preview = useRef<HTMLDialogElement>(null);
   const placement = v.showButtons ? v.buttonPosition : "none";
+  // The buttons' text as customers will see it
+  const shown = { explore: v.primaryButton.label.trim() || labels.explore, ourStory: v.secondaryButton.label.trim() || labels.ourStory };
 
   const update = (patch: Partial<Banner>) => {
     setV((prev) => ({ ...prev, ...patch }));
@@ -57,6 +72,14 @@ export default function BannerForm({ initial, labels }: { initial: Banner; label
       for (const k of Object.keys(patch)) delete next[k as keyof BannerErrors];
       // "Upload a picture, or switch the banner off"
       if ("enabled" in patch) delete next.image;
+      if ("primaryButton" in patch || "showButtons" in patch) {
+        delete next.primaryLabel;
+        delete next.primaryLink;
+      }
+      if ("secondaryButton" in patch || "showButtons" in patch) {
+        delete next.secondaryLabel;
+        delete next.secondaryLink;
+      }
       return next;
     });
   };
@@ -114,7 +137,13 @@ export default function BannerForm({ initial, labels }: { initial: Banner; label
 
       {hasBannerErrors(errors) ? (
         <p className="rounded-xl bg-red-700/10 px-4 py-3 text-sm text-red-800" role="alert">
-          {errors.form ?? errors.image ?? errors.mobileImage ?? errors.alt}
+          {errors.form ??
+            errors.image ??
+            errors.mobileImage ??
+            errors.alt ??
+            (errors.primaryLabel || errors.primaryLink || errors.secondaryLabel || errors.secondaryLink
+              ? "Please fix the button text and links below."
+              : null)}
         </p>
       ) : saved ? (
         <p
@@ -167,7 +196,7 @@ export default function BannerForm({ initial, labels }: { initial: Banner; label
       {/* 2. Buttons */}
       <Step n={2} title="Buttons">
         <p className="mb-3 text-sm text-chocolate/60">
-          Where should &ldquo;{labels.explore}&rdquo; and &ldquo;{labels.ourStory}&rdquo; sit on the picture?
+          Where should &ldquo;{shown.explore}&rdquo; and &ldquo;{shown.ourStory}&rdquo; sit on the picture?
         </p>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4" role="radiogroup" aria-label="Button position">
           {placements.map((p) => {
@@ -218,8 +247,8 @@ export default function BannerForm({ initial, labels }: { initial: Banner; label
                 return (
                   <button key={s.value} type="button" role="radio" aria-checked={on} onClick={() => update({ buttonStyle: s.value })} className={card(on)}>
                     <span className={`flex items-center justify-center gap-2 rounded-lg px-3 py-5 ${s.bg}`}>
-                      <span className={`rounded-full px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.15em] ${s.main}`}>{labels.explore}</span>
-                      <span className={`rounded-full border px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.15em] ${s.other}`}>{labels.ourStory}</span>
+                      <span className={`rounded-full px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.15em] ${s.main}`}>{shown.explore}</span>
+                      <span className={`rounded-full border px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.15em] ${s.other}`}>{shown.ourStory}</span>
                     </span>
                     <span className="flex items-center justify-between gap-2 px-0.5 text-sm">
                       <span>
@@ -231,6 +260,30 @@ export default function BannerForm({ initial, labels }: { initial: Banner; label
                 );
               })}
             </div>
+
+            <p className="mb-3 mt-6 text-sm text-chocolate/60">Button text and links: what each button says and where it takes customers.</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <ButtonFields
+                id="primary"
+                title="Main button"
+                hint="Filled"
+                button={v.primaryButton}
+                defaultLabel={labels.explore}
+                links={links}
+                errors={{ label: errors.primaryLabel, link: errors.primaryLink }}
+                onChange={(primaryButton) => update({ primaryButton })}
+              />
+              <ButtonFields
+                id="secondary"
+                title="Second button"
+                hint="Outlined"
+                button={v.secondaryButton}
+                defaultLabel={labels.ourStory}
+                links={links}
+                errors={{ label: errors.secondaryLabel, link: errors.secondaryLink }}
+                onChange={(secondaryButton) => update({ secondaryButton })}
+              />
+            </div>
           </>
         )}
       </Step>
@@ -238,6 +291,123 @@ export default function BannerForm({ initial, labels }: { initial: Banner; label
       {/* Preview, opened from the button at the top */}
       <PreviewDialog dialog={preview} banner={v} labels={labels} />
     </form>
+  );
+}
+
+// One button's text and link
+function ButtonFields({
+  id,
+  title,
+  hint,
+  button,
+  defaultLabel,
+  links,
+  errors,
+  onChange,
+}: {
+  id: string;
+  title: string;
+  hint: string;
+  button: BannerButton;
+  defaultLabel: string;
+  links: LinkGroup[];
+  errors: { label?: string; link?: string };
+  onChange: (button: BannerButton) => void;
+}) {
+  return (
+    <fieldset className="grid gap-3 rounded-2xl border border-chocolate/15 p-4">
+      <legend className="px-1 text-sm font-medium">
+        {title} <span className="font-normal text-chocolate/50">· {hint}</span>
+      </legend>
+      <div>
+        <label htmlFor={`${id}-label`} className="mb-1.5 block text-xs text-chocolate/70">
+          Button text
+        </label>
+        <input
+          id={`${id}-label`}
+          value={button.label}
+          onChange={(e) => onChange({ ...button, label: e.target.value })}
+          maxLength={bannerButtonLimits.label}
+          placeholder={defaultLabel}
+          aria-invalid={!!errors.label}
+          aria-describedby={`${id}-label-hint`}
+          className={`${input} aria-invalid:border-red-700`}
+        />
+        <p id={`${id}-label-hint`} className={`mt-1 text-xs ${errors.label ? "text-red-700" : "text-chocolate/50"}`}>
+          {errors.label ?? <>Leave empty to show &ldquo;{defaultLabel}&rdquo;.</>}
+        </p>
+      </div>
+      <LinkPicker id={`${id}-link`} value={button.link} groups={links} error={errors.link} onChange={(link) => onChange({ ...button, link })} />
+    </fieldset>
+  );
+}
+
+const CUSTOM_LINK = "custom";
+
+// Every page of the shop to pick from (pages, categories, products), or any other link typed in
+function LinkPicker({
+  id,
+  value,
+  groups,
+  error,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  groups: LinkGroup[];
+  error?: string;
+  onChange: (link: string) => void;
+}) {
+  const listed = groups.flatMap((g) => g.options).find((o) => o.href === value);
+  // A saved link that isn't in the list (another site, or a page since removed) opens as a typed link
+  const [custom, setCustom] = useState(!!value && !listed);
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-xs text-chocolate/70">
+        Goes to
+      </label>
+      <select
+        id={id}
+        value={custom ? CUSTOM_LINK : listed ? value : ""}
+        onChange={(e) => {
+          const picked = e.target.value;
+          setCustom(picked === CUSTOM_LINK);
+          if (picked !== CUSTOM_LINK) onChange(picked);
+        }}
+        aria-invalid={!!error && !custom}
+        className={`${input} aria-invalid:border-red-700`}
+      >
+        <option value="" disabled>
+          Choose a page…
+        </option>
+        {groups.map((g) => (
+          <optgroup key={g.name} label={g.name}>
+            {g.options.map((o) => (
+              <option key={o.href} value={o.href}>
+                {o.name}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+        <optgroup label="Other">
+          <option value={CUSTOM_LINK}>Another link…</option>
+        </optgroup>
+      </select>
+      {custom && (
+        <input
+          aria-label="Link address"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={bannerButtonLimits.link}
+          placeholder="/products/ or https://instagram.com/…"
+          aria-invalid={!!error}
+          className={`${input} mt-2 aria-invalid:border-red-700`}
+        />
+      )}
+      <p className={`mt-1 break-all text-xs ${error ? "text-red-700" : "text-chocolate/50"}`}>
+        {error ?? (value ? `Link: ${value}` : "Pick a page, category or product.")}
+      </p>
+    </div>
   );
 }
 

@@ -22,6 +22,17 @@ describe("validateTestimonials", () => {
     expect(errors.items?.[0]?.message).toBeTruthy();
   });
 
+  it("limits the length of the name and city", () => {
+    const errors = validateTestimonials({ ...base, items: [{ ...review, name: "x".repeat(61), place: "x".repeat(61) }] });
+    expect(errors.items?.[0]).toEqual({ name: "Keep it under 60 characters.", place: "Keep it under 60 characters." });
+  });
+
+  it("allows up to 24 reviews", () => {
+    const reviews = (n: number) => Array.from({ length: n }, (_, i) => ({ ...review, id: `r${i}` }));
+    expect(validateTestimonials({ ...base, items: reviews(24) }).form).toBeUndefined();
+    expect(validateTestimonials({ ...base, items: reviews(25) }).form).toBe("Up to 24 reviews.");
+  });
+
   it("needs at least one review while the section is shown", () => {
     expect(validateTestimonials({ ...base, items: [] }).form).toBeTruthy();
     expect(hasTestimonialErrors(validateTestimonials({ ...base, enabled: false, items: [] }))).toBe(false);

@@ -18,6 +18,9 @@ export const getBanner = unstable_cache(
       showButtons: doc.showButtons,
       buttonPosition: doc.buttonPosition,
       buttonStyle: doc.buttonStyle,
+      // Banners saved before the buttons could be changed keep "Explore Products" and "Our Story"
+      primaryButton: doc.primaryButton ?? defaultBanner.primaryButton,
+      secondaryButton: doc.secondaryButton ?? defaultBanner.secondaryButton,
     };
   },
   ["banner"],

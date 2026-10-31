@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import type { Banner, BannerButtonPosition, BannerImage } from "@/lib/banner";
+import type { Banner, BannerButton, BannerButtonPosition, BannerImage } from "@/lib/banner";
 
 type Labels = { heading: string; explore: string; ourStory: string };
 
@@ -37,14 +37,23 @@ export default function HeroBanner({
   const overlayOnPhone = !!mobileImage;
   const { box, buttons } = place(banner.buttonPosition);
 
+  // The admin's text and link for each button; empty text keeps the shop's usual wording
+  const button = ({ label, link }: BannerButton, fallback: string, className: string) => {
+    const text = label.trim() || fallback;
+    return link.startsWith("/") ? (
+      <Link href={link} className={className}>
+        {text}
+      </Link>
+    ) : (
+      <a href={link} target="_blank" rel="noopener" className={className}>
+        {text}
+      </a>
+    );
+  };
   const links = (style: keyof typeof buttonStyles) => (
     <>
-      <Link href="/products/" className={buttonStyles[style].explore}>
-        {labels.explore}
-      </Link>
-      <Link href="/about/" className={buttonStyles[style].story}>
-        {labels.ourStory}
-      </Link>
+      {button(banner.primaryButton, labels.explore, buttonStyles[style].explore)}
+      {button(banner.secondaryButton, labels.ourStory, buttonStyles[style].story)}
     </>
   );
 

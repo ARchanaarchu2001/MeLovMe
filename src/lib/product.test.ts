@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { activeCombos, lineTotal, type Product } from "./product";
+import { LOW_STOCK, activeCombos, lineTotal, maxQtyFor, offerDaysLeft, offerStatus, priceOf, type Offer, type Product } from "./product";
 
 // A fixed "today" so date-based offers give the same result whenever the tests run
 const NOW = Date.parse("2026-06-15T12:00:00+05:30");
@@ -113,5 +113,142 @@ describe("activeCombos", () => {
 
   test("a product with no combos has none to show", () => {
     expect(activeCombos({ ...lotion, combos: [] }, NOW)).toEqual([]);
+  });
+});
+
+describe("offer dates: offerStatus", () => {
+  // Offer runs 10–20 June 2026, India time
+  const june: Offer = { type: "percent", value: 20, startsAt: "2026-06-10T00:00:00+05:30", endsAt: "2026-06-20T23:59:59+05:30" };
+
+  test("a product without an offer has no offer status", () => {
+    expect(offerStatus(null, NOW)).toBeNull();
+    expect(offerStatus(undefined, NOW)).toBeNull();
+  });
+
+  test("an offer worth nothing (0 or less) counts as no offer", () => {
+    expect(offerStatus({ type: "percent", value: 0 }, NOW)).toBeNull();
+    expect(offerStatus({ type: "flat", value: -100 }, NOW)).toBeNull();
+  });
+
+  test("an offer without dates is always running", () => {
+    expect(offerStatus({ type: "flat", value: 100 }, NOW)).toBe("active");
+  });
+
+  test("an offer is running between its start and end dates", () => {
+    expect(offerStatus(june, NOW)).toBe("active");
+  });
+
+  test("an offer that starts later is upcoming", () => {
+    expect(offerStatus(june, Date.parse("2026-06-09T23:59:59+05:30"))).toBe("upcoming");
+  });
+
+  test("an offer is running from the first moment of its start day", () => {
+    expect(offerStatus(june, Date.parse("2026-06-10T00:00:00+05:30"))).toBe("active");
+  });
+
+  test("an offer is still running at the last moment of its end day", () => {
+    expect(offerStatus(june, Date.parse("2026-06-20T23:59:59+05:30"))).toBe("active");
+  });
+
+  test("an offer whose end date has passed is ended", () => {
+    expect(offerStatus(june, Date.parse("2026-06-21T00:00:00+05:30"))).toBe("ended");
+  });
+
+  test("an offer with only an end date runs until then", () => {
+    const untilJune20: Offer = { type: "percent", value: 20, endsAt: june.endsAt };
+    expect(offerStatus(untilJune20, NOW)).toBe("active");
+    expect(offerStatus(untilJune20, Date.parse("2026-07-01T12:00:00+05:30"))).toBe("ended");
+  });
+});
+
+describe("offer prices: priceOf", () => {
+  test("without an offer the customer pays the regular price, with nothing off", () => {
+    expect(priceOf({ price: 1550, offer: null }, NOW)).toEqual({ price: 1550, mrp: 1550, off: 0 });
+  });
+
+  test("a % offer takes that share off the price", () => {
+    // 20% of ₹1,550 = ₹310, so ₹1,240
+    expect(priceOf({ price: 1550, offer: { type: "percent", value: 20 } }, NOW)).toEqual({ price: 1240, mrp: 1550, off: 20 });
+  });
+
+  test("a ₹ offer takes that amount off, and shows the rounded % saved", () => {
+    // ₹1,550 − ₹300 = ₹1,250; 300 / 1550 = 19.4% → 19% off
+    expect(priceOf({ price: 1550, offer: { type: "flat", value: 300 } }, NOW)).toEqual({ price: 1250, mrp: 1550, off: 19 });
+  });
+
+  test("offer prices are rounded to whole rupees", () => {
+    // 5% of ₹1,550 = ₹77.50 → ₹1,472.50 rounds to ₹1,473
+    expect(priceOf({ price: 1550, offer: { type: "percent", value: 5 } }, NOW).price).toBe(1473);
+  });
+
+  test("an offer never brings the price below ₹1", () => {
+    expect(priceOf({ price: 500, offer: { type: "flat", value: 800 } }, NOW).price).toBe(1);
+  });
+
+  test("an offer that hasn't started yet doesn't change the price", () => {
+    const later: Offer = { type: "percent", value: 50, startsAt: "2026-07-01T00:00:00+05:30" };
+    expect(priceOf({ price: 1550, offer: later }, NOW)).toEqual({ price: 1550, mrp: 1550, off: 0 });
+  });
+
+  test("an offer that has ended doesn't change the price", () => {
+    const over: Offer = { type: "percent", value: 50, endsAt: "2026-06-01T23:59:59+05:30" };
+    expect(priceOf({ price: 1550, offer: over }, NOW)).toEqual({ price: 1550, mrp: 1550, off: 0 });
+  });
+});
+
+describe("offer countdown: offerDaysLeft", () => {
+  // Last day of the offer is 20 June 2026 (India time)
+  const endsJune20: Offer = { type: "percent", value: 20, endsAt: "2026-06-20T23:59:59+05:30" };
+
+  test("counts the whole days until the offer's last day", () => {
+    // 15 June → 20 June = 5 days
+    expect(offerDaysLeft(endsJune20, NOW)).toBe(5);
+  });
+
+  test("is 0 on the offer's last day", () => {
+    expect(offerDaysLeft(endsJune20, Date.parse("2026-06-20T09:00:00+05:30"))).toBe(0);
+  });
+
+  test("counts India dates, even just after midnight when it is still the day before in UTC", () => {
+    // 00:30 on 19 June in India is 18 June 19:00 UTC; one day left
+    expect(offerDaysLeft(endsJune20, Date.parse("2026-06-19T00:30:00+05:30"))).toBe(1);
+  });
+
+  test("an offer without an end date has no countdown", () => {
+    expect(offerDaysLeft({ type: "percent", value: 20 }, NOW)).toBeNull();
+  });
+
+  test("an offer that hasn't started has no countdown", () => {
+    expect(offerDaysLeft({ ...endsJune20, startsAt: "2026-06-18T00:00:00+05:30" }, NOW)).toBeNull();
+  });
+
+  test("an offer that has ended has no countdown", () => {
+    expect(offerDaysLeft(endsJune20, Date.parse("2026-06-21T10:00:00+05:30"))).toBeNull();
+  });
+});
+
+describe("stock limits: maxQtyFor", () => {
+  test("a product whose stock isn't counted can be bought up to the cart limit", () => {
+    expect(maxQtyFor({ stock: null }, 10)).toBe(10);
+  });
+
+  test("plenty of stock still stops at the cart limit", () => {
+    expect(maxQtyFor({ stock: 50 }, 10)).toBe(10);
+  });
+
+  test("low stock lowers the limit to what is left", () => {
+    expect(maxQtyFor({ stock: 3 }, 10)).toBe(3);
+  });
+
+  test("no stock means none can be bought", () => {
+    expect(maxQtyFor({ stock: 0 }, 10)).toBe(0);
+  });
+
+  test("a negative stock count is treated as none", () => {
+    expect(maxQtyFor({ stock: -2 }, 10)).toBe(0);
+  });
+
+  test("the shop warns 'only a few left' at 5 units or fewer", () => {
+    expect(LOW_STOCK).toBe(5);
   });
 });

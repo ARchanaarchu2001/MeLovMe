@@ -2,7 +2,7 @@
 // is pressed) and in the server actions (so nothing invalid is ever saved).
 
 import { HEX_COLOR, type Announcement } from "@/lib/announcement";
-import { BANNER_ALT_MAX, type Banner, type BannerImage } from "@/lib/banner";
+import { BANNER_ALT_MAX, bannerButtonLimits, type Banner, type BannerButton, type BannerImage } from "@/lib/banner";
 import { MAX_QTY, fulfillments, type Fulfillment } from "@/lib/order";
 import { MAX_COMBOS, type Offer, type Product } from "@/lib/product";
 import { reviewLimits, type ReviewInput } from "@/lib/review";
@@ -211,7 +211,9 @@ export const hasAnnouncementErrors = (e: AnnouncementErrors) => Object.keys(e).l
 
 // ---------- Home banner ----------
 
-export type BannerErrors = Partial<Record<"form" | "image" | "mobileImage" | "alt", string>>;
+export type BannerErrors = Partial<
+  Record<"form" | "image" | "mobileImage" | "alt" | "primaryLabel" | "primaryLink" | "secondaryLabel" | "secondaryLink", string>
+>;
 
 export function validateBanner(b: Banner): BannerErrors {
   const errors: BannerErrors = {};
@@ -220,6 +222,19 @@ export function validateBanner(b: Banner): BannerErrors {
   if (badSize(b.mobileImage)) errors.mobileImage = "Upload this picture again.";
   if (b.enabled && !b.image) errors.image = "Upload a banner picture, or switch the banner off.";
   if (b.alt.trim().length > BANNER_ALT_MAX) errors.alt = tooLong(BANNER_ALT_MAX);
+  // The buttons only matter while they're shown
+  if (b.showButtons) {
+    const button = (btn: BannerButton, label: "primaryLabel" | "secondaryLabel", link: "primaryLink" | "secondaryLink") => {
+      const L = bannerButtonLimits;
+      if (btn.label.trim().length > L.label) errors[label] = tooLong(L.label);
+      const href = btn.link.trim();
+      if (!href) errors[link] = "Choose where this button goes.";
+      else if (href.length > L.link) errors[link] = tooLong(L.link);
+      else if (!LINK.test(href)) errors[link] = "Start with / (a shop page) or https://";
+    };
+    button(b.primaryButton, "primaryLabel", "primaryLink");
+    button(b.secondaryButton, "secondaryLabel", "secondaryLink");
+  }
   return errors;
 }
 

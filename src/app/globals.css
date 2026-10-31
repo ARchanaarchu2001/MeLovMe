@@ -204,8 +204,7 @@ body {
   .reveal { opacity: 1; transform: none; }
   /* A still announcement bar: just the first message, centred */
   .announcement-track { width: auto; justify-content: center; }
-  .announcement-track > * { max-width: 100%; }
-  .announcement-track > * > *:not(:first-child),
+  .announcement-track > * { max-width: 100%; }  .announcement-track > * > *:not(:first-child),
   .announcement-track > [aria-hidden] { display: none; }
   /* Loading spinners still turn (slowly) — a frozen one looks like the page has hung */
   .animate-spin { animation: spin 1.5s linear infinite !important; }

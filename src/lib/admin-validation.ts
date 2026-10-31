@@ -2,9 +2,11 @@
 // is pressed) and in the server actions (so nothing invalid is ever saved).
 
 import { HEX_COLOR, type Announcement } from "@/lib/announcement";
+import { BANNER_ALT_MAX, type Banner, type BannerImage } from "@/lib/banner";
 import { MAX_QTY, fulfillments, type Fulfillment } from "@/lib/order";
 import { MAX_COMBOS, type Offer, type Product } from "@/lib/product";
 import { reviewLimits, type ReviewInput } from "@/lib/review";
+import { testimonialLimits, type Testimonials } from "@/lib/testimonials";
 
 // ---------- Products ----------
 
@@ -206,6 +208,52 @@ export function validateAnnouncement(a: Announcement): AnnouncementErrors {
 }
 
 export const hasAnnouncementErrors = (e: AnnouncementErrors) => Object.keys(e).length > 0;
+
+// ---------- Home banner ----------
+
+export type BannerErrors = Partial<Record<"form" | "image" | "mobileImage" | "alt", string>>;
+
+export function validateBanner(b: Banner): BannerErrors {
+  const errors: BannerErrors = {};
+  const badSize = (i: BannerImage | null) => !!i && !(i.width > 0 && i.height > 0);
+  if (badSize(b.image)) errors.image = "Upload this picture again.";
+  if (badSize(b.mobileImage)) errors.mobileImage = "Upload this picture again.";
+  if (b.enabled && !b.image) errors.image = "Upload a banner picture, or switch the banner off.";
+  if (b.alt.trim().length > BANNER_ALT_MAX) errors.alt = tooLong(BANNER_ALT_MAX);
+  return errors;
+}
+
+export const hasBannerErrors = (e: BannerErrors) => Object.values(e).some(Boolean);
+
+// ---------- Home page testimonials ----------
+
+export type TestimonialRowErrors = { name?: string; place?: string; message?: string; photo?: string };
+export type TestimonialErrors = {
+  form?: string;
+  items?: (TestimonialRowErrors | undefined)[]; // by row, as in the form
+};
+
+export function validateTestimonials(t: Testimonials): TestimonialErrors {
+  const L = testimonialLimits;
+  const errors: TestimonialErrors = {};
+  const rows = t.items.map((r) => {
+    const e: TestimonialRowErrors = {};
+    const message = r.message.trim();
+    const name = r.name.trim();
+    if (!message) e.message = "Enter the review.";
+    else if (message.length > L.message) e.message = tooLong(L.message);
+    if (!name) e.name = "Enter who wrote it.";
+    else if (name.length > L.name) e.name = tooLong(L.name);
+    if (r.place.trim().length > L.place) e.place = tooLong(L.place);
+    return Object.keys(e).length ? e : undefined;
+  });
+  if (rows.some(Boolean)) errors.items = rows;
+  if (t.items.length > L.items) errors.form = `Up to ${L.items} reviews.`;
+  else if (t.enabled && !t.items.length) errors.form = "Add at least one review, or hide the section.";
+  return errors;
+}
+
+export const hasTestimonialErrors = (e: TestimonialErrors) => !!e.form || !!e.items?.some(Boolean);
 
 // ---------- Reviews added by the shop ----------
 

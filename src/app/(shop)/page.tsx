@@ -1,70 +1,81 @@
 import { getTranslations } from "next-intl/server";
 import Image from "next/image";
 import Link from "next/link";
+import HeroBanner from "@/components/HeroBanner";
 import Logo from "@/components/Logo";
 import ProductCard from "@/components/ProductCard";
 import Reveal from "@/components/Reveal";
+import Testimonials from "@/components/Testimonials";
 import { Icon, LeafArt } from "@/components/Icons";
+import { getBanner } from "@/lib/server/banner";
 import { getCatalog } from "@/lib/server/products";
-import { testimonials, values } from "@/data/site";
+import { getTestimonials } from "@/lib/server/testimonials";
+import { values } from "@/data/site";
 
 export default async function Home() {
-  const products = await getCatalog();
+  const [products, banner, community] = await Promise.all([getCatalog(), getBanner(), getTestimonials()]);
   const t = await getTranslations("home");
   const tc = await getTranslations("common");
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-chocolate text-ivory">
-        <LeafArt className="animate-sway pointer-events-none absolute -left-10 bottom-0 h-[420px] w-auto text-gold/25" />
-        <div className="mx-auto grid max-w-7xl items-center gap-8 md:gap-12 px-5 py-12 md:grid-cols-2 md:px-8 md:py-28">
-          <div className="relative z-10">
-            <p className="eyebrow animate-fade-up">{t("hero.eyebrow")}</p>
-            <h1
-              className="animate-fade-up mt-6 text-4xl font-light leading-tight md:text-6xl"
-              style={{ animationDelay: "150ms" }}
-            >
-              {t.rich("hero.title", {
-                br: () => <br />,
-                shimmer: (chunks) => <span className="text-shimmer font-medium">{chunks}</span>,
-              })}
-            </h1>
-            <p
-              className="animate-fade-up mt-6 max-w-md text-base leading-relaxed text-ivory/75"
-              style={{ animationDelay: "300ms" }}
-            >
-              {t("hero.text")}
-            </p>
-            <div className="animate-fade-up mt-6 md:mt-10 flex flex-wrap gap-4" style={{ animationDelay: "450ms" }}>
-              <Link href="/products/" className="btn btn-gold">
-                {t("hero.explore")}
-              </Link>
-              <Link href="/about/" className="btn btn-outline text-ivory hover:!border-ivory hover:!bg-ivory hover:!text-chocolate">
-                {t("hero.ourStory")}
-              </Link>
+      {/* Hero: the banner picture uploaded in the admin area, or the built-in one */}
+      {banner.enabled && banner.image ? (
+        <HeroBanner
+          banner={{ ...banner, image: banner.image }}
+          labels={{ heading: t("hero.eyebrow"), explore: t("hero.explore"), ourStory: t("hero.ourStory") }}
+        />
+      ) : (
+        <section className="relative overflow-hidden bg-chocolate text-ivory">
+          <LeafArt className="animate-sway pointer-events-none absolute -left-10 bottom-0 h-[420px] w-auto text-gold/25" />
+          <div className="mx-auto grid max-w-7xl items-center gap-8 md:gap-12 px-5 py-12 md:grid-cols-2 md:px-8 md:py-28">
+            <div className="relative z-10">
+              <p className="eyebrow animate-fade-up">{t("hero.eyebrow")}</p>
+              <h1
+                className="animate-fade-up mt-6 text-4xl font-light leading-tight md:text-6xl"
+                style={{ animationDelay: "150ms" }}
+              >
+                {t.rich("hero.title", {
+                  br: () => <br />,
+                  shimmer: (chunks) => <span className="text-shimmer font-medium">{chunks}</span>,
+                })}
+              </h1>
+              <p
+                className="animate-fade-up mt-6 max-w-md text-base leading-relaxed text-ivory/75"
+                style={{ animationDelay: "300ms" }}
+              >
+                {t("hero.text")}
+              </p>
+              <div className="animate-fade-up mt-6 md:mt-10 flex flex-wrap gap-4" style={{ animationDelay: "450ms" }}>
+                <Link href="/products/" className="btn btn-gold">
+                  {t("hero.explore")}
+                </Link>
+                <Link href="/about/" className="btn btn-outline text-ivory hover:!border-ivory hover:!bg-ivory hover:!text-chocolate">
+                  {t("hero.ourStory")}
+                </Link>
+              </div>
             </div>
-          </div>
-          <div className="relative">
-            <div className="animate-zoom-in relative aspect-[4/3] overflow-hidden md:aspect-square rounded-[2.5rem] shadow-2xl shadow-black/30">
-              <Image
-                src="/images/body-lotion-box.webp"
-                alt={t("hero.imageAlt")}
-                fill
-                priority
-                sizes="(min-width: 768px) 50vw, 100vw"
-                className="object-cover"
-              />
-            </div>
-            <div className="animate-fade-up absolute -bottom-6 -left-6 hidden md:block" style={{ animationDelay: "700ms" }}>
-              <div className="animate-float rounded-3xl bg-ivory px-6 py-5 text-chocolate shadow-xl">
-                <p className="text-3xl font-medium">{t("hero.statValue")}</p>
-                <p className="text-xs uppercase tracking-[0.2em] text-chocolate/70">{t("hero.statLabel")}</p>
+            <div className="relative">
+              <div className="animate-zoom-in relative aspect-[4/3] overflow-hidden md:aspect-square rounded-[2.5rem] shadow-2xl shadow-black/30">
+                <Image
+                  src="/images/body-lotion-box.webp"
+                  alt={t("hero.imageAlt")}
+                  fill
+                  priority
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  className="object-cover"
+                />
+              </div>
+              <div className="animate-fade-up absolute -bottom-6 -left-6 hidden md:block" style={{ animationDelay: "700ms" }}>
+                <div className="animate-float rounded-3xl bg-ivory px-6 py-5 text-chocolate shadow-xl">
+                  <p className="text-3xl font-medium">{t("hero.statValue")}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-chocolate/70">{t("hero.statLabel")}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Brand intro */}
       <section className="mx-auto max-w-4xl px-5 py-12 md:py-24 text-center md:px-8">
@@ -147,29 +158,10 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="mx-auto max-w-7xl px-5 py-12 md:py-24 md:px-8">
-        <Reveal className="text-center">
-          <p className="eyebrow">{t("testimonialsSection.eyebrow")}</p>
-          <h2 className="mt-4 text-3xl font-light md:text-5xl">{t("testimonialsSection.title")}</h2>
-        </Reveal>
-        <div className="mt-8 md:mt-14 grid gap-6 md:gap-8 md:grid-cols-3">
-          {testimonials.map((key, i) => (
-            <Reveal key={key} delay={i * 150} className="h-full">
-              <figure className="h-full rounded-[2rem] bg-ivory p-6 md:p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-xl hover:shadow-chocolate/10">
-                <Icon name="sparkle" className="h-6 w-6 text-gold" />
-                <blockquote className="mt-5 leading-relaxed text-chocolate/80">
-                  {t("testimonialsSection.quote", { quote: t(`testimonials.${key}.quote`) })}
-                </blockquote>
-                <figcaption className="mt-6 text-sm">
-                  <span className="font-medium">{t(`testimonials.${key}.name`)}</span>
-                  <span className="text-chocolate/50"> · {t(`testimonials.${key}.place`)}</span>
-                </figcaption>
-              </figure>
-            </Reveal>
-          ))}
-        </div>
-      </section>
+      {/* Testimonials (set up in the admin area) */}
+      {community.enabled && community.items.length > 0 && (
+        <Testimonials data={community} eyebrow={t("testimonialsSection.eyebrow")} title={t("testimonialsSection.title")} />
+      )}
 
       {/* CTA */}
       <section className="px-5 pb-12 md:pb-24 md:px-8">

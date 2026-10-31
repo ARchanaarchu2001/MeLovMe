@@ -20,7 +20,9 @@ const nav = [
   { href: "/admin/products/", label: "Products", icon: icon("M12 3 4 7v10l8 4 8-4V7l-8-4Zm0 0v18M4 7l8 4 8-4") },
   { href: "/admin/categories/", label: "Categories", icon: icon("M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v6H4zM17 15v6M14 18h6") },
   { href: "/admin/reviews/", label: "Reviews", icon: icon("m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z") },
+  { href: "/admin/testimonials/", label: "Testimonials", icon: icon("M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12ZM9 10.5h.01M12 10.5h.01M15 10.5h.01") },
   { href: "/admin/payments/", label: "Payments", icon: icon("M3 6h18v12H3zM3 10h18M7 15h4") },
+  { href: "/admin/banner/", label: "Home banner", icon: icon("M3 5h18v14H3zM3 15l5-5 4 4 3-3 6 6M15.5 9.5h.01") },
   { href: "/admin/announcement/", label: "Announcement bar", icon: icon("M4 10v4h3l6 4V6L7 10H4Zm13-1.5a4 4 0 0 1 0 7M19.5 6a7.5 7.5 0 0 1 0 12") },
 ];
 
@@ -52,7 +54,12 @@ export default function AdminShell({ name, children }: { name: string; children:
         <span className="h-8 w-px bg-ivory/20" aria-hidden="true" />
         <span className="text-[0.7rem] font-medium uppercase tracking-[0.3em] text-gold">Admin</span>
       </Link>
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5" aria-label="Admin">
+      {/* Compact enough to fit a laptop screen. Phones show a thin scroll bar, as the menu is longer than the
+          screen there; on computers it's hidden (a short window still scrolls, just without the bar) */}
+      <nav
+        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3 [scrollbar-color:rgb(201_163_106/0.5)_transparent] [scrollbar-width:thin] lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden"
+        aria-label="Admin"
+      >
         {nav.map((n) => {
           const active = isActive(n.href, n.exact);
           return (
@@ -61,7 +68,7 @@ export default function AdminShell({ name, children }: { name: string; children:
               href={n.href}
               onClick={() => setOpen(false)}
               aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors ${
+              className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-colors ${
                 active ? "bg-ivory/10 text-gold" : "text-ivory/75 hover:bg-ivory/5 hover:text-ivory"
               }`}
             >
@@ -71,13 +78,13 @@ export default function AdminShell({ name, children }: { name: string; children:
           );
         })}
       </nav>
-      <div className="space-y-1 border-t border-ivory/10 px-3 py-4 text-sm">
-        <Link href="/" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-ivory/75 hover:bg-ivory/5 hover:text-ivory">
+      <div className="space-y-0.5 border-t border-ivory/10 px-3 py-2 text-sm">
+        <Link href="/" className="flex items-center gap-3 rounded-xl px-4 py-2 text-ivory/75 hover:bg-ivory/5 hover:text-ivory">
           {icon("M3 11 12 4l9 7M5 10v10h14V10")}
           View shop
         </Link>
         <form action={logout}>
-          <PendingButton className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-ivory/75 hover:bg-ivory/5 hover:text-ivory disabled:opacity-60">
+          <PendingButton className="flex w-full items-center gap-3 rounded-xl px-4 py-2 text-ivory/75 hover:bg-ivory/5 hover:text-ivory disabled:opacity-60">
             {icon("M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10")}
             Log out
           </PendingButton>

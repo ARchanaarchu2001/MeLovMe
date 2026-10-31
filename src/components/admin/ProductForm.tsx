@@ -14,52 +14,11 @@ import Spinner from "@/components/Spinner";
 import { TrashIcon } from "@/components/admin/actions";
 import CategoryPicker from "@/components/admin/CategoryPicker";
 import { RequiredMark, StockBadge } from "@/components/admin/ui";
+import { IMAGE_TYPES, shrink, uploadToCloudinary } from "@/lib/upload";
 
 const input =
   "w-full rounded-xl border border-chocolate/20 bg-white/60 px-4 py-2.5 text-sm outline-none focus:border-gold aria-invalid:border-red-700";
 const label = "mb-1.5 block text-xs uppercase tracking-[0.15em] text-chocolate/60";
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
-// Shrinks a photo to at most 1600px wide/high and re-encodes it as WebP, so uploads stay small
-async function shrink(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not process the image"))), "image/webp", 0.85),
-  );
-}
-
-// Uploads straight from the browser to Cloudinary, using a one-time signature from our server
-// (the API secret stays there). Returns the image's link, which is all the product stores.
-async function uploadToCloudinary(image: Blob) {
-  const signRes = await fetch("/api/admin/images/", { method: "POST" });
-  const sign = (await signRes.json()) as {
-    cloudName?: string;
-    apiKey?: string;
-    signature?: string;
-    timestamp?: string;
-    folder?: string;
-    error?: string;
-  };
-  if (!signRes.ok || !sign.signature) throw new Error(sign.error ?? "Upload failed");
-
-  const body = new FormData();
-  body.append("file", image, "image.webp");
-  body.append("api_key", sign.apiKey!);
-  body.append("timestamp", sign.timestamp!);
-  body.append("signature", sign.signature);
-  body.append("folder", sign.folder!);
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`, { method: "POST", body });
-  const data = (await res.json()) as { secure_url?: string; error?: { message?: string } };
-  if (!res.ok || !data.secure_url) throw new Error(data.error?.message ?? "Upload failed");
-  // f_auto,q_auto: Cloudinary picks the best format (WebP/AVIF) and quality for each device
-  return data.secure_url.replace("/image/upload/", "/image/upload/f_auto,q_auto/");
-}
 
 // One combo row as typed: pieces and total price (strings while editing), optional tag
 type ComboRow = { qty: string; price: string; tag: "" | "popular" | "best" };
@@ -169,7 +128,7 @@ export default function ProductForm({ initial, isNew, categories }: {
       }
       setUploading((n) => n + 1);
       try {
-        const url = await uploadToCloudinary(await shrink(file));
+        const { url } = await uploadToCloudinary(await shrink(file));
         setV((prev) => ({ ...prev, images: [...prev.images, url] }));
         setSaved(false);
       } catch (err) {

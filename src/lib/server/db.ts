@@ -2,10 +2,12 @@ import "server-only";
 import { MongoClient, ObjectId, type Collection, type Db } from "mongodb";
 import { seedProducts } from "@/data/seed-products";
 import type { Announcement } from "@/lib/announcement";
+import type { Banner } from "@/lib/banner";
 import { categoryKey, categorySlug, tidyCategoryName } from "@/lib/category";
 import type { Address, Fulfillment, OrderStatus, Refund } from "@/lib/order";
 import type { PaymentSettings } from "@/lib/payments";
 import type { Product } from "@/lib/product";
+import type { Testimonials } from "@/lib/testimonials";
 import type { PaymentDetails } from "./razorpay";
 
 export type UserDoc = {
@@ -102,7 +104,9 @@ export type CategoryDoc = {
 // Shop-wide settings edited in the admin area, one document each
 export type AnnouncementSettingsDoc = { _id: "announcement" } & Announcement & { updatedAt: Date };
 export type PaymentSettingsDoc = { _id: "payments" } & PaymentSettings & { updatedAt: Date };
-export type SettingsDoc = AnnouncementSettingsDoc | PaymentSettingsDoc;
+export type BannerSettingsDoc = { _id: "banner" } & Banner & { updatedAt: Date };
+export type TestimonialsSettingsDoc = { _id: "testimonials" } & Testimonials & { updatedAt: Date };
+export type SettingsDoc = AnnouncementSettingsDoc | PaymentSettingsDoc | BannerSettingsDoc | TestimonialsSettingsDoc;
 
 
 // Reuse one client across hot reloads in dev and across requests in prod

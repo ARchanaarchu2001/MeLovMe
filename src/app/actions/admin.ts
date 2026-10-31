@@ -3,28 +3,37 @@
 import { ObjectId } from "mongodb";
 import {
   hasAnnouncementErrors,
+  hasBannerErrors,
+  hasTestimonialErrors,
   productLimits,
   stockError,
   toSlug,
   validateAdminReview,
   validateAnnouncement,
+  validateBanner,
+  validateTestimonials,
   validateOrderUpdate,
   validateProduct,
   type AdminReviewErrors,
   type AnnouncementErrors,
+  type BannerErrors,
+  type TestimonialErrors,
   type OrderUpdateErrors,
   type OrderUpdateInput,
   type ProductErrors,
   type ProductInput,
 } from "@/lib/admin-validation";
 import { announcementSpeeds, type Announcement, type AnnouncementMessage } from "@/lib/announcement";
+import { bannerButtonPositions, bannerButtonStyles, type Banner, type BannerImage } from "@/lib/banner";
 import { categoryKey, categoryNameError, placementError, tidyCategoryName, type Category } from "@/lib/category";
 import { formatPrice } from "@/lib/format";
 import { placedStatuses, refundState, type Refund } from "@/lib/order";
 import type { PaymentSettings } from "@/lib/payments";
 import type { Product } from "@/lib/product";
 import type { ReviewInput } from "@/lib/review";
+import { testimonialLayouts, type Testimonial, type Testimonials } from "@/lib/testimonials";
 import { refreshAnnouncement } from "@/lib/server/announcement";
+import { refreshBanner } from "@/lib/server/banner";
 import { cloudinaryCloudName } from "@/lib/server/cloudinary";
 import { freeCategorySlug, getDb } from "@/lib/server/db";
 import { syncPendingRefunds } from "@/lib/server/orders";
@@ -34,6 +43,7 @@ import { adjustStock, loadCategories, refreshCatalog } from "@/lib/server/produc
 import { createRefund } from "@/lib/server/razorpay";
 import { cleanReview, refreshReviews } from "@/lib/server/reviews";
 import { requireAdmin } from "@/lib/server/session";
+import { refreshTestimonials } from "@/lib/server/testimonials";
 
 // Text as typed, trimmed. Lengths are checked by the validators (with a message), not cut silently.
 const text = (v: unknown) => String(v ?? "").trim();
@@ -390,6 +400,70 @@ export async function saveAnnouncement(input: Announcement): Promise<{ errors: A
     { upsert: true },
   );
   refreshAnnouncement();
+  return { ok: true };
+}
+
+// ---------- Home banner ----------
+
+export async function saveBanner(input: Banner): Promise<{ errors: BannerErrors } | { ok: true }> {
+  await requireAdmin();
+  const image = (v: BannerImage | null | undefined): BannerImage | null => {
+    const url = text(v?.url);
+    return url ? { url, width: Math.round(Number(v?.width)) || 0, height: Math.round(Number(v?.height)) || 0 } : null;
+  };
+  const banner: Banner = {
+    enabled: input?.enabled === true,
+    image: image(input?.image),
+    mobileImage: image(input?.mobileImage),
+    alt: text(input?.alt),
+    showButtons: input?.showButtons !== false,
+    buttonPosition: bannerButtonPositions.includes(input?.buttonPosition) ? input.buttonPosition : "bottom-left",
+    buttonStyle: bannerButtonStyles.includes(input?.buttonStyle) ? input.buttonStyle : "light",
+  };
+  const errors = validateBanner(banner);
+  // Only pictures uploaded through the admin area (or the shop's own) can be shown
+  if (banner.image && !isOwnImage(banner.image.url)) errors.image = "Upload this picture again.";
+  if (banner.mobileImage && !isOwnImage(banner.mobileImage.url)) errors.mobileImage = "Upload this picture again.";
+  if (hasBannerErrors(errors)) return { errors };
+
+  await (await getDb()).settings.updateOne({ _id: "banner" }, { $set: { ...banner, updatedAt: new Date() } }, { upsert: true });
+  refreshBanner();
+  return { ok: true };
+}
+
+// ---------- Home page testimonials ----------
+
+export async function saveTestimonials(input: Testimonials): Promise<{ errors: TestimonialErrors } | { ok: true }> {
+  await requireAdmin();
+  const ids = new Set<string>();
+  const testimonials: Testimonials = {
+    enabled: input?.enabled === true,
+    layout: testimonialLayouts.includes(input?.layout) ? input.layout : "grid",
+    autoScroll: input?.autoScroll === true,
+    items: (Array.isArray(input?.items) ? input.items : []).map((r): Testimonial => {
+      // Each card needs its own id; make one if it's missing or repeated
+      let id = text(r?.id).slice(0, 64);
+      if (!id || ids.has(id)) id = new ObjectId().toHexString();
+      ids.add(id);
+      return { id, name: text(r?.name), place: text(r?.place), message: text(r?.message), photo: text(r?.photo) || null };
+    }),
+  };
+  const errors = validateTestimonials(testimonials);
+  // Only photos uploaded through the admin area (or the shop's own) can be shown
+  testimonials.items.forEach((r, i) => {
+    if (r.photo && !isOwnImage(r.photo)) {
+      errors.items ??= [];
+      errors.items[i] = { ...errors.items[i], photo: "Upload this photo again." };
+    }
+  });
+  if (hasTestimonialErrors(errors)) return { errors };
+
+  await (await getDb()).settings.updateOne(
+    { _id: "testimonials" },
+    { $set: { ...testimonials, updatedAt: new Date() } },
+    { upsert: true },
+  );
+  refreshTestimonials();
   return { ok: true };
 }
 
